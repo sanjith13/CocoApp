@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,6 +47,8 @@ function readLastFarm(): string | null {
   }
 }
 
+const noopSubscribe = () => () => {}
+
 function writeLastFarm(id: string) {
   try {
     localStorage.setItem(LAST_FARM_KEY, id)
@@ -59,10 +61,15 @@ export function HarvestForm({ action, farms, today, marketNames, lastMarket, ini
   const [state, formAction, pending] = useActionState(action, null)
   const fe = state && !state.ok ? (state.fieldErrors ?? {}) : {}
 
-  const firstFarm = farms[0]
-  const [farmId, setFarmId] = useState(initial?.farm_id ?? firstFarm?.id ?? '')
+  // Last-used farm from localStorage: null on the server and during hydration, then the stored id.
+  const storedFarm = useSyncExternalStore(noopSubscribe, readLastFarm, () => null)
+  const [farmOverride, setFarmOverride] = useState<string | null>(null)
+  const defaultFarm = !initial ? farms.find((f) => f.id === storedFarm) : undefined
+  const farmId = farmOverride ?? initial?.farm_id ?? defaultFarm?.id ?? farms[0]?.id ?? ''
+  const farmLastMethod = farms.find((f) => f.id === farmId)?.lastMethod ?? null
+  const [methodOverride, setMethod] = useState<'mudi' | 'ton' | null>(null)
+  const method: 'mudi' | 'ton' = methodOverride ?? initial?.method ?? farmLastMethod ?? 'mudi'
   const [date, setDate] = useState(initial?.harvest_date ?? today)
-  const [method, setMethod] = useState<'mudi' | 'ton'>(initial?.method ?? firstFarm?.lastMethod ?? 'mudi')
   const [mudi, setMudi] = useState(initial?.mudi_count != null ? String(initial.mudi_count) : '')
   const [extra, setExtra] = useState(initial && initial.extra_nuts ? String(initial.extra_nuts) : '')
   const [ton, setTon] = useState(initial?.weight_ton != null ? String(initial.weight_ton) : '')
@@ -71,23 +78,9 @@ export function HarvestForm({ action, farms, today, marketNames, lastMarket, ini
   const [market, setMarket] = useState(initial?.linked_market_name ?? lastMarket)
   const [notes, setNotes] = useState(initial?.notes ?? '')
 
-  // New harvest: default to the last-used farm (localStorage) and that farm's last method.
-  useEffect(() => {
-    if (initial) return
-    const stored = readLastFarm()
-    const farm = farms.find((f) => f.id === stored)
-    if (farm) {
-      setFarmId(farm.id)
-      if (farm.lastMethod) setMethod(farm.lastMethod)
-    }
-  }, [initial, farms])
-
   function pickFarm(id: string) {
-    setFarmId(id)
-    if (!initial) {
-      const m = farms.find((f) => f.id === id)?.lastMethod
-      if (m) setMethod(m)
-    }
+    setFarmOverride(id)
+    if (!initial) setMethod(null) // fall back to the picked farm's last-used method
   }
 
   const rateNum = rate.trim() === '' || Number.isNaN(Number(rate)) ? null : Number(rate)

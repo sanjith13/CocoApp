@@ -1,4 +1,4 @@
-import { createTestDb, type TestDb } from './harness'
+import { createTestDb, type Row, type TestDb } from './harness'
 
 let t: TestDb
 beforeEach(async () => {
@@ -51,17 +51,17 @@ async function applyUrea(u: string, farm: string, date: string, kg = 50): Promis
 }
 
 async function effect(u: string, app: string) {
-  const r = await t.asUser(u, (tx) => tx.query<any>('select * from fertilizer_effect($1)', [app]))
+  const r = await t.asUser(u, (tx) => tx.query<Row>('select * from fertilizer_effect($1)', [app]))
   return r.rows
 }
 
 test('seed fertilizers are visible to any user; own additions are private', async () => {
   const a = await t.createUser()
   const b = await t.createUser()
-  const seen = await t.asUser(b, (tx) => tx.query<any>('select name, n_pct, p_pct, k_pct from fertilizer_master'))
-  const names = seen.rows.map((r: any) => r.name)
+  const seen = await t.asUser(b, (tx) => tx.query<Row>('select name, n_pct, p_pct, k_pct from fertilizer_master'))
+  const names = seen.rows.map((r: Row) => r.name)
   for (const n of ['Urea', 'DAP', 'MOP', 'SSP', '17-17-17']) expect(names).toContain(n)
-  const urea = seen.rows.find((r: any) => r.name === 'Urea')
+  const urea = seen.rows.find((r: Row) => r.name === 'Urea')!
   expect([Number(urea.n_pct), Number(urea.p_pct), Number(urea.k_pct)]).toEqual([46, 0, 0])
 
   await t.asUser(a, (tx) =>
@@ -82,7 +82,7 @@ test('NPK totals, per tree and per acre', async () => {
   const { u, farm } = await setup(2)
   await setTrees(farm, '2026-01-01', 400)
   const app = await applyUrea(u, farm, '2026-03-01', 50)
-  const r = await t.asUser(u, (tx) => tx.query<any>('select * from fertilizer_npk where id = $1', [app]))
+  const r = await t.asUser(u, (tx) => tx.query<Row>('select * from fertilizer_npk where id = $1', [app]))
   const row = r.rows[0]
   expect(Number(row.n_kg)).toBe(23)
   expect(Number(row.p_kg)).toBe(0)
@@ -95,7 +95,7 @@ test('NPK per tree / per acre null on zero divisor', async () => {
   const { u, farm } = await setup(0)
   await setTrees(farm, '2026-01-01', 0)
   const app = await applyUrea(u, farm, '2026-03-01', 50)
-  const r = await t.asUser(u, (tx) => tx.query<any>('select * from fertilizer_npk where id = $1', [app]))
+  const r = await t.asUser(u, (tx) => tx.query<Row>('select * from fertilizer_npk where id = $1', [app]))
   expect(r.rows[0].n_per_tree_kg).toBeNull()
   expect(r.rows[0].n_per_acre_kg).toBeNull()
 })
@@ -120,8 +120,8 @@ test('fertilizer_effect: baseline, window change, empty window', async () => {
   await addHarvest(u, farm, '2026-04-10', 27.5) // 55/tree, D + 40 days
   const app = await applyUrea(u, farm, '2026-03-01')
   const rows = await effect(u, app)
-  const by = (l: string) => rows.find((r: any) => r.window_label === l)
-  expect(rows.map((r: any) => r.window_label).sort()).toEqual(['0-1', '1-2', '2-3', '3-6', 'baseline'])
+  const by = (l: string) => rows.find((r: Row) => r.window_label === l)!
+  expect(rows.map((r: Row) => r.window_label).sort()).toEqual(['0-1', '1-2', '2-3', '3-6', 'baseline'])
   expect(by('baseline').method).toBe('mudi')
   expect(by('baseline').harvests).toBe(2)
   expect(Number(by('baseline').avg_per_tree)).toBe(50)
@@ -141,7 +141,7 @@ test('fertilizer_effect: per_tree uses the tree count on each harvest date', asy
   await addHarvest(u, farm, '2026-04-10', 50) // 10000 nuts / 200 = 50
   const app = await applyUrea(u, farm, '2026-03-01')
   const rows = await effect(u, app)
-  const w = rows.find((r: any) => r.window_label === '1-2')
+  const w = rows.find((r: Row) => r.window_label === '1-2')!
   expect(Number(w.avg_per_tree)).toBe(50)
   expect(Number(w.change_pct)).toBe(0)
 })
@@ -155,11 +155,11 @@ test('fertilizer_effect: no change_pct when baseline missing; methods kept apart
   )
   const app = await applyUrea(u, farm, '2026-03-01')
   const rows = await effect(u, app)
-  const mudi = rows.filter((r: any) => r.method === 'mudi')
-  const ton = rows.filter((r: any) => r.method === 'ton')
-  expect(mudi.find((r: any) => r.window_label === 'baseline').harvests).toBe(0)
-  expect(mudi.find((r: any) => r.window_label === '1-2').change_pct).toBeNull()
-  expect(ton.find((r: any) => r.window_label === 'baseline').harvests).toBe(1)
+  const mudi = rows.filter((r: Row) => r.method === 'mudi')
+  const ton = rows.filter((r: Row) => r.method === 'ton')
+  expect(mudi.find((r: Row) => r.window_label === 'baseline')!.harvests).toBe(0)
+  expect(mudi.find((r: Row) => r.window_label === '1-2')!.change_pct).toBeNull()
+  expect(ton.find((r: Row) => r.window_label === 'baseline')!.harvests).toBe(1)
 })
 
 test('RLS: cannot apply another users custom fertilizer; seeds still work', async () => {

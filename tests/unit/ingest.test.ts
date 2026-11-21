@@ -12,15 +12,16 @@ describe('oneYearBefore', () => {
 })
 
 type Row = Record<string, unknown>
-function fakeAdmin(farms: Row[], normalFarmIds: string[]) {
+function fakeAdmin(farms: Row[], normalFarmIds: string[], historyFarmIds: string[] = normalFarmIds) {
   const upserts: Array<{ table: string; rows: Row[] }> = []
   const admin = {
     from(table: string) {
       return {
         select: () => {
-          const data = table === 'farms' ? farms : normalFarmIds.map((farm_id) => ({ farm_id }))
+          const ids = table === 'weather_daily' ? historyFarmIds : normalFarmIds
+          const data = table === 'farms' ? farms : ids.map((farm_id) => ({ farm_id }))
           const res = { data, error: null }
-          const chain = { eq: () => chain, in: () => chain, then: (f: (v: typeof res) => unknown) => f(res) }
+          const chain = { eq: () => chain, in: () => chain, lte: () => chain, gte: () => chain, then: (f: (v: typeof res) => unknown) => f(res) }
           return chain
         },
         upsert: async (rows: Row[]) => {
@@ -53,7 +54,7 @@ describe('ingestRecentWeather', () => {
       { id: 'new', latitude: 2, longitude: 2 },
       { id: 'old', latitude: 3, longitude: 3 },
     ]
-    const { admin, upserts } = fakeAdmin(farms, ['old'])
+    const { admin, upserts } = fakeAdmin(farms, ['old'], ['bad', 'new', 'old'])
     const fetchFn = vi.fn(async (input: string | URL | Request) => {
       const url = String(input)
       if (url.includes('latitude=1&')) return new Response('', { status: 500 })
@@ -61,7 +62,7 @@ describe('ingestRecentWeather', () => {
       return new Response(JSON.stringify(body(['2020-01-01'], 1)), { status: 200 })
     }) as unknown as typeof fetch
 
-    const out = await ingestRecentWeather({ admin, fetchFn })
+    const out = await ingestRecentWeather({ admin, fetchFn, backfill: vi.fn(async () => {}) })
 
     expect(out.farms).toBe(3)
     expect(out.errors).toHaveLength(1)
@@ -70,5 +71,25 @@ describe('ingestRecentWeather', () => {
     const normals = upserts.filter((u) => u.table === 'farm_climate_normals')
     expect(normals).toHaveLength(1)
     expect(normals[0].rows).toEqual([{ farm_id: 'new', month: 6, mean_rainfall_mm: 5 }])
+  })
+
+  it('backfills only active farms with no history, and a failing backfill does not stop the daily pull', async () => {
+    const farms = [
+      { id: 'hist', latitude: 1, longitude: 1 },
+      { id: 'empty', latitude: 2, longitude: 2 },
+      { id: 'broken', latitude: 3, longitude: 3 },
+    ]
+    const { admin, upserts } = fakeAdmin(farms, ['hist', 'empty', 'broken'], ['hist'])
+    const backfill = vi.fn(async (id: string) => {
+      if (id === 'broken') throw new Error('archive down')
+    })
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify(body(['2020-01-01'], 1)), { status: 200 })) as unknown as typeof fetch
+
+    const out = await ingestRecentWeather({ admin, fetchFn, backfill })
+
+    expect(backfill.mock.calls.map((c) => c[0])).toEqual(['empty', 'broken'])
+    expect(out.errors).toHaveLength(1)
+    expect(out.errors[0]).toContain('broken')
+    expect(upserts.filter((u) => u.table === 'weather_daily')).toHaveLength(3) // daily pull ran for every farm
   })
 })

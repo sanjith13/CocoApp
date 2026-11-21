@@ -29,10 +29,10 @@ export async function saveHarvest(_prev: HarvestActionResult | null, form: FormD
   const supabase = await createServerClient()
 
   let harvestId: string
-  let oldDate: string | null = null
+  let before: { farm_id: string; harvest_date: string } | null = null
   if (editId) {
-    const { data: before } = await supabase.from('harvests').select('harvest_date').eq('id', editId).maybeSingle()
-    oldDate = before?.harvest_date ?? null
+    const { data } = await supabase.from('harvests').select('farm_id, harvest_date').eq('id', editId).maybeSingle()
+    before = data
     const { error } = await supabase
       .from('harvests')
       .update({ ...harvest, updated_at: new Date().toISOString() })
@@ -64,19 +64,35 @@ export async function saveHarvest(_prev: HarvestActionResult | null, form: FormD
   }
 
   // A report failure must never fail or block the harvest save.
+  const farmMoved = before !== null && before.farm_id !== harvest.farm_id
+  const dateMoved = before !== null && before.harvest_date !== harvest.harvest_date
+  let reportFailed = false
   try {
     await generateReportsAround(supabase, {
       harvestId,
-      extraAfterDates: oldDate && oldDate !== harvest.harvest_date ? [oldDate] : [],
+      extraAfterDates: before && dateMoved && !farmMoved ? [before.harvest_date] : [],
     })
   } catch (e) {
+    reportFailed = true
     console.error('Report generation failed', e)
+  }
+  if (before && farmMoved) {
+    // The old farm lost a harvest: its next harvest's period start has moved.
+    try {
+      await generateReportsAround(supabase, { farmId: before.farm_id, extraAfterDates: [before.harvest_date] })
+    } catch (e) {
+      console.error('Report generation failed for the previous farm', e)
+    }
   }
 
   revalidatePath('/harvests')
   revalidatePath('/market')
   revalidatePath('/reports')
   revalidatePath(`/harvests/${harvestId}`)
+  if (reportFailed) {
+    const msg = 'Saved, but the report could not be generated. Open the harvest to retry.'
+    redirect(`/harvests/${harvestId}?notice=${encodeURIComponent(warning ? `${warning} ${msg}` : msg)}`)
+  }
   if (warning) redirect(`/harvests/${harvestId}?notice=${encodeURIComponent(warning)}`)
   redirect(editId ? '/harvests' : `/reports/${harvestId}`)
 }

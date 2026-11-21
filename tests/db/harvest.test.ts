@@ -1,4 +1,4 @@
-import { createTestDb, type TestDb } from './harness'
+import { createTestDb, type Row, type TestDb } from './harness'
 
 let t: TestDb
 beforeEach(async () => {
@@ -51,7 +51,7 @@ async function setup() {
 
 async function stats(u: string, farm: string) {
   const r = await t.asUser(u, (tx) =>
-    tx.query<any>(`select * from harvest_stats where farm_id = $1 order by harvest_date`, [farm]),
+    tx.query<Row>(`select * from harvest_stats where farm_id = $1 order by harvest_date`, [farm]),
   )
   return r.rows
 }
@@ -60,7 +60,7 @@ test('mudi harvest computes nuts and revenue', async () => {
   const { u, farm } = await setup()
   const id = await addHarvest(u, farm, '2026-01-10', 'mudi', 120, { extra: 15, rate: 12 })
   const r = await t.asUser(u, (tx) =>
-    tx.query<any>('select coconut_count, revenue from harvests where id = $1', [id]),
+    tx.query<Row>('select coconut_count, revenue from harvests where id = $1', [id]),
   )
   expect(r.rows[0].coconut_count).toBe(24015)
   expect(Number(r.rows[0].revenue)).toBe(288180)
@@ -69,7 +69,7 @@ test('mudi harvest computes nuts and revenue', async () => {
 test('ton harvest revenue', async () => {
   const { u, farm } = await setup()
   const id = await addHarvest(u, farm, '2026-01-10', 'ton', 2.5, { rate: 28000 })
-  const r = await t.asUser(u, (tx) => tx.query<any>('select revenue from harvests where id = $1', [id]))
+  const r = await t.asUser(u, (tx) => tx.query<Row>('select revenue from harvests where id = $1', [id]))
   expect(Number(r.rows[0].revenue)).toBe(70000)
 })
 
@@ -151,7 +151,7 @@ test('estimated_revenue uses latest matching rate', async () => {
     ),
   )
   const est = (id: string) =>
-    t.asUser(u, (tx) => tx.query<any>('select estimated_revenue($1) as v', [id]))
+    t.asUser(u, (tx) => tx.query<Row>('select estimated_revenue($1) as v', [id]))
   expect(Number((await est(unsold)).rows[0].v)).toBe(240000)
   expect((await est(sold)).rows[0].v).toBeNull()
 })
@@ -159,7 +159,7 @@ test('estimated_revenue uses latest matching rate', async () => {
 test('estimated_revenue null when no matching rate', async () => {
   const { u, farm } = await setup()
   const id = await addHarvest(u, farm, '2026-01-10', 'ton', 2)
-  const r = await t.asUser(u, (tx) => tx.query<any>('select estimated_revenue($1) as v', [id]))
+  const r = await t.asUser(u, (tx) => tx.query<Row>('select estimated_revenue($1) as v', [id]))
   expect(r.rows[0].v).toBeNull()
 })
 
@@ -172,7 +172,7 @@ test('latest_rates returns latest per market and type', async () => {
        ('K', '2026-01-05', 'whole_nut_per_nut', 12)`,
     ),
   )
-  const r = await t.asUser(u, (tx) => tx.query<any>('select rate from latest_rates'))
+  const r = await t.asUser(u, (tx) => tx.query<Row>('select rate from latest_rates'))
   expect(r.rows).toHaveLength(1)
   expect(Number(r.rows[0].rate)).toBe(12)
 })
@@ -224,11 +224,19 @@ test('harvest_stats.estimated_revenue matches the function for sold and unsold h
     ),
   )
   const rows = await stats(u, farm)
-  const byId = new Map(rows.map((r: any) => [r.id, r]))
+  const byId = new Map(rows.map((r: Row) => [r.id, r]))
   const fn = async (id: string) =>
-    (await t.asUser(u, (tx) => tx.query<any>('select estimated_revenue($1) as v', [id]))).rows[0].v
-  expect(Number(byId.get(unsold).estimated_revenue)).toBe(2000 * 15)
-  expect(byId.get(unsold).estimated_revenue).toBe(await fn(unsold))
-  expect(byId.get(sold).estimated_revenue).toBeNull()
+    (await t.asUser(u, (tx) => tx.query<Row>('select estimated_revenue($1) as v', [id]))).rows[0].v
+  expect(Number(byId.get(unsold)!.estimated_revenue)).toBe(2000 * 15)
+  expect(byId.get(unsold)!.estimated_revenue).toBe(await fn(unsold))
+  expect(byId.get(sold)!.estimated_revenue).toBeNull()
   expect(await fn(sold)).toBeNull()
+})
+
+test('extra_nuts: negative rejected; nonzero rejected for ton method', async () => {
+  const { u, farm } = await setup()
+  await expect(addHarvest(u, farm, '2026-01-01', 'mudi', 10, { extra: -1 })).rejects.toThrow()
+  await expect(addHarvest(u, farm, '2026-01-02', 'ton', 2, { extra: 5 })).rejects.toThrow()
+  await expect(addHarvest(u, farm, '2026-01-03', 'mudi', 10, { extra: 5 })).resolves.toBeTruthy()
+  await expect(addHarvest(u, farm, '2026-01-04', 'ton', 2, { extra: 0 })).resolves.toBeTruthy()
 })

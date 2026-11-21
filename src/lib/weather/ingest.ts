@@ -1,6 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { oneYearBefore, todayIST } from '@/lib/domain/dates'
+import { addDays, oneYearBefore, todayIST } from '@/lib/domain/dates'
 import { fetchDaily, type WeatherDay } from './openMeteo'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -71,10 +71,11 @@ export async function backfillFarmWeather(farmId: string): Promise<void> {
 
 /** Pulls the last complete days for every active farm. One farm failing does not stop the rest. */
 export async function ingestRecentWeather(
-  deps: { admin?: Admin; fetchFn?: typeof fetch } = {},
+  deps: { admin?: Admin; fetchFn?: typeof fetch; backfill?: (farmId: string) => Promise<void> } = {},
 ): Promise<{ farms: number; rows: number; errors: string[] }> {
   const admin = deps.admin ?? createAdminClient()
   const fetchFn = deps.fetchFn ?? fetch
+  const backfill = deps.backfill ?? backfillFarmWeather
   const { data: farms, error } = await admin
     .from('farms')
     .select('id, latitude, longitude')
@@ -89,11 +90,31 @@ export async function ingestRecentWeather(
     .in('farm_id', (farms ?? []).map((f) => f.id))
   if (nErr) throw new Error(nErr.message)
   const haveNormals = new Set((normalRows ?? []).map((r) => r.farm_id as string))
+  // Farms whose 12-month backfill never landed (failed at creation): they have no daily row in a
+  // narrow window around 30 days ago. One bounded query (<= 8 rows per farm), not one per farm.
+  const today = todayIST()
+  const { data: oldRows, error: oErr } = await admin
+    .from('weather_daily')
+    .select('farm_id')
+    .in('farm_id', (farms ?? []).map((f) => f.id))
+    .lte('date', addDays(today, -30))
+    .gte('date', addDays(today, -37))
+  if (oErr) throw new Error(oErr.message)
+  const haveHistory = new Set((oldRows ?? []).map((r) => r.farm_id as string))
   let rows = 0
   const errors: string[] = []
   for (const farm of farms ?? []) {
     try {
       if (farm.latitude == null || farm.longitude == null) continue
+      if (!haveHistory.has(farm.id)) {
+        // Best effort: a failed backfill must not stop the daily pull below.
+        try {
+          await backfill(farm.id)
+          haveNormals.add(farm.id) // backfill also computes normals
+        } catch (e) {
+          errors.push(`${farm.id}: backfill ${e instanceof Error ? e.message : String(e)}`)
+        }
+      }
       const days = await fetchDaily(Number(farm.latitude), Number(farm.longitude), '', '', { archive: false }, fetchFn)
       rows += await upsertDays(admin, farm.id, days)
       if (!haveNormals.has(farm.id)) {

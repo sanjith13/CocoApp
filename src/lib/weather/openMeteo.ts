@@ -84,8 +84,8 @@ export async function fetchDaily(
       weather_code: code,
       weather_type: code === null ? null : wmoToType(code),
     }
-    const { date: _d, weather_type: _w, ...values } = day
-    if (Object.values(values).every((v) => v === null)) return
+    const values = [day.temp_max, day.temp_min, day.temp_mean, day.humidity_mean, day.rainfall_mm, day.windspeed_max, day.weather_code]
+    if (values.every((v) => v === null)) return
     days.push(day)
   })
   return days

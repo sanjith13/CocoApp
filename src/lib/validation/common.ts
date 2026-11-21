@@ -12,3 +12,5 @@ export const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim
 export const num = () => z.preprocess(blankToUndefined, z.coerce.number({ error: 'Required' }))
 
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date')
+
+export const uuidSchema = z.string().uuid('Invalid id')
