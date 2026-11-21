@@ -16,7 +16,7 @@ const tabs = [
 
 const tabClass = 'flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium'
 
-export function BottomTabs() {
+export function BottomTabs({ adminSlot }: { adminSlot?: React.ReactNode }) {
   const pathname = usePathname()
   return (
     <nav
@@ -52,6 +52,7 @@ export function BottomTabs() {
                 </Link>
               </li>
             ))}
+            {adminSlot ? <li>{adminSlot}</li> : null}
             <li>
               <form action={signOut}>
                 <button type="submit" className="block w-full py-3 text-left text-base">

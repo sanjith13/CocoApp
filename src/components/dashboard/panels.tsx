@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { LineTrend } from '@/components/charts/LineTrend'
 import { BarSeries } from '@/components/charts/BarSeries'
+import { LatestWeather, type DayRow } from '@/components/dashboard/LatestWeather'
 import { BarLineCombo } from '@/components/charts/BarLineCombo'
 import { StackedBars } from '@/components/charts/StackedBars'
 import { ChartEmpty, type ChartRow } from '@/components/charts/shared'
@@ -165,19 +166,39 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
 export async function WeatherPanel({ farm }: PanelProps) {
   const supabase = await createServerClient()
   const since = monthsAgoFirst(todayIST(), 23)
-  const { data, error } = await fetchAll((a, b) =>
-    farmScope(farm)(supabase.from('weather_monthly').select('farm_id, month, avg_temp, total_rain, avg_humidity').gte('month', since))
-      .order('month')
-      .order('farm_id')
-      .range(a, b),
-  )
+  const [{ data, error }, latest, farms] = await Promise.all([
+    fetchAll((a, b) =>
+      farmScope(farm)(supabase.from('weather_monthly').select('farm_id, month, avg_temp, total_rain, avg_humidity').gte('month', since))
+        .order('month')
+        .order('farm_id')
+        .range(a, b),
+    ),
+    farmScope(farm)(
+      supabase.from('weather_daily').select('farm_id, date, temp_min, temp_max, humidity_mean, rainfall_mm, weather_type'),
+    )
+      .order('date', { ascending: false })
+      .limit(100),
+    supabase.from('farms').select('id, name').eq('active', true).order('name').limit(100),
+  ])
   if (error) return <PanelError message={error.message} />
+  // Latest day per farm (rows are newest first).
+  const seen = new Set<string>()
+  const latestByFarm: { id: string; name: string; row: DayRow }[] = []
+  const names = new Map((farms.data ?? []).map((f: { id: string; name: string }) => [f.id, f.name]))
+  for (const r of latest.data ?? []) {
+    if (seen.has(r.farm_id) || !names.has(r.farm_id)) continue
+    seen.add(r.farm_id)
+    latestByFarm.push({ id: r.farm_id, name: names.get(r.farm_id) as string, row: r })
+  }
   const recent = data
   const temp = toRows('x', { v: avgBy(recent, (r) => r.month, (r) => num(r.avg_temp)) }, monthLabel)
   const rain = toRows('x', { v: avgBy(recent, (r) => r.month, (r) => num(r.total_rain)) }, monthLabel)
   const hum = toRows('x', { v: avgBy(recent, (r) => r.month, (r) => num(r.avg_humidity)) }, monthLabel)
   return (
     <div className="space-y-4">
+      {latestByFarm.map((f) => (
+        <LatestWeather key={f.id} name={farm ? undefined : f.name} row={f.row} />
+      ))}
       <Section title="Temperature" note="Monthly average">
         <LineTrend data={temp} xKey="x" series={[{ key: 'v', label: 'Avg temperature', unit: '°C' }]} />
       </Section>

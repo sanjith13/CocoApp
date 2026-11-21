@@ -1,5 +1,6 @@
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
+import { LatestWeather } from '@/components/dashboard/LatestWeather'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
@@ -35,6 +36,7 @@ async function WeatherTable({ params }: { params: Promise<{ farmId: string }> })
           Back to farm
         </Link>
       </div>
+      {days?.[0] ? <LatestWeather row={days[0]} /> : null}
       {(days ?? []).length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No weather data yet. It is loaded after the farm is saved and refreshed daily.

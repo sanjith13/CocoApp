@@ -8,7 +8,7 @@ import { sidebarLinks } from './items'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/logo'
 
-export function Sidebar() {
+export function Sidebar({ adminSlot }: { adminSlot?: React.ReactNode }) {
   const pathname = usePathname()
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground md:flex">
@@ -29,6 +29,7 @@ export function Sidebar() {
             <T>{l.label}</T>
           </Link>
         ))}
+        {adminSlot}
       </nav>
       <div className="mb-3"><LanguageToggle /></div>
       <form action={signOut}>

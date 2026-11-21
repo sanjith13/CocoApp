@@ -2,7 +2,6 @@
 
 import { T, LanguageToggle, useT } from '@/lib/i18n/client'
 import { useState } from 'react'
-import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase/browser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,12 +54,6 @@ export default function LoginPage() {
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={busy}>{busy ? t('Signing in…') : t('Sign in')}</Button>
       </form>
-      <p className="text-sm text-muted-foreground">
-        <T>New here?</T>{' '}
-        <Link href="/signup" className="underline">
-          <T>Create an account</T>
-        </Link>
-      </p>
     </main>
   )
 }
