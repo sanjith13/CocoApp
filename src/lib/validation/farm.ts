@@ -1,15 +1,5 @@
 import { z } from 'zod'
-
-// Empty text clears the column (null) so updates can unset optional fields.
-const optionalText = z
-  .string()
-  .trim()
-  .nullish()
-  .transform((v) => (v ? v : null))
-
-// Blank input must fail as required instead of coercing to 0.
-const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v)
-const num = () => z.preprocess(blankToUndefined, z.coerce.number({ error: 'Required' }))
+import { blankToUndefined, num, optionalText } from './common'
 
 const count = z.preprocess(
   blankToUndefined,
