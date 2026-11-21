@@ -81,7 +81,12 @@ export async function ingestRecentWeather(
     .eq('active', true)
   if (error) throw new Error(error.message)
   // Farms whose normals never loaded (e.g. archive call failed at creation) get them retried here.
-  const { data: normalRows, error: nErr } = await admin.from('farm_climate_normals').select('farm_id')
+  // One row per farm (month 1; all 12 months are written together) keeps this under PostgREST's 1000-row cap.
+  const { data: normalRows, error: nErr } = await admin
+    .from('farm_climate_normals')
+    .select('farm_id')
+    .eq('month', 1)
+    .in('farm_id', (farms ?? []).map((f) => f.id))
   if (nErr) throw new Error(nErr.message)
   const haveNormals = new Set((normalRows ?? []).map((r) => r.farm_id as string))
   let rows = 0

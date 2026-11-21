@@ -20,7 +20,8 @@ function fakeAdmin(farms: Row[], normalFarmIds: string[]) {
         select: () => {
           const data = table === 'farms' ? farms : normalFarmIds.map((farm_id) => ({ farm_id }))
           const res = { data, error: null }
-          return { eq: () => res, then: (f: (v: typeof res) => unknown) => f(res) }
+          const chain = { eq: () => chain, in: () => chain, then: (f: (v: typeof res) => unknown) => f(res) }
+          return chain
         },
         upsert: async (rows: Row[]) => {
           upserts.push({ table, rows })
