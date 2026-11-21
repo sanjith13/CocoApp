@@ -29,8 +29,11 @@ test('expenses are private to the farm owner and validated', async () => {
       tx.query(`insert into expenses(farm_id, date, category, amount) values ($1, '2026-03-01', 'labour', 10)`, [farm]),
     ),
   ).rejects.toThrow()
+  await t.asUser(u, (tx) =>
+    tx.query(`insert into expenses(farm_id, date, category, amount) values ($1, '2026-03-01', 'tender picking', 10)`, [farm]),
+  )
   await expect(
-    t.asUser(u, (tx) => tx.query(`insert into expenses(farm_id, date, category, amount) values ($1, '2026-03-01', 'lunch', 10)`, [farm])),
+    t.asUser(u, (tx) => tx.query(`insert into expenses(farm_id, date, category, amount) values ($1, '2026-03-01', '  ', 10)`, [farm])),
   ).rejects.toThrow()
   await expect(
     t.asUser(u, (tx) => tx.query(`insert into expenses(farm_id, date, category, amount) values ($1, '2026-03-01', 'labour', 0)`, [farm])),

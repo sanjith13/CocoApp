@@ -16,7 +16,7 @@ function FieldError({ errors }: { errors?: string[] }) {
   return errors?.length ? <p className="text-sm text-destructive">{errors[0]}</p> : null
 }
 
-export function ExpenseForm({ farms, today }: { farms: Option[]; today: string }) {
+export function ExpenseForm({ farms, today, categories }: { farms: Option[]; today: string; categories: string[] }) {
   const [state, formAction, pending] = useActionState(saveExpense, null)
   const t = useT()
   const fe = state && !state.ok ? (state.fieldErrors ?? {}) : {}
@@ -44,13 +44,13 @@ export function ExpenseForm({ farms, today }: { farms: Option[]; today: string }
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label htmlFor="category"><T>Category</T></Label>
-          <select id="category" name="category" className={selectCls} defaultValue="labour">
-            {EXPENSE_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {t(cap(c))}
-              </option>
+          <Input id="category" name="category" list="expense-categories" defaultValue="labour" autoComplete="off" className="h-11" />
+          <datalist id="expense-categories">
+            {[...new Set([...EXPENSE_CATEGORIES, ...categories])].map((c) => (
+              <option key={c} value={c} label={t(cap(c))} />
             ))}
-          </select>
+          </datalist>
+          <p className="text-xs text-muted-foreground"><T>Pick one or type a new category.</T></p>
           <FieldError errors={fe.category} />
         </div>
         <div className="space-y-1">

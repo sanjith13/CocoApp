@@ -69,6 +69,7 @@ const ta: Record<string, string> = {
   'Notes (optional)': 'குறிப்புகள் (விருப்பம்)',
   'Save expense': 'செலவைச் சேமி',
   'Saving...': 'சேமிக்கிறது...',
+  'Pick one or type a new category.': 'ஒன்றைத் தேர்வு செய்யவும் அல்லது புதிய வகையை உள்ளிடவும்.',
   'Expense saved.': 'செலவு சேமிக்கப்பட்டது.',
   Labour: 'ஆள் கூலி',
   Pesticide: 'பூச்சிக்கொல்லி',

@@ -13,9 +13,13 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
 async function FormLoader() {
   const supabase = await createServerClient()
-  const { data, error } = await supabase.from('farms').select('id, name').eq('active', true).order('name')
-  if (error) return <p className="text-destructive">{error.message}</p>
-  return <ExpenseForm farms={data ?? []} today={todayIST()} />
+  const [farms, used] = await Promise.all([
+    supabase.from('farms').select('id, name').eq('active', true).order('name'),
+    supabase.from('expenses').select('category').limit(1000),
+  ])
+  if (farms.error) return <p className="text-destructive">{farms.error.message}</p>
+  const categories = [...new Set((used.data ?? []).map((r) => r.category as string))]
+  return <ExpenseForm farms={farms.data ?? []} today={todayIST()} categories={categories} />
 }
 
 async function Summary() {

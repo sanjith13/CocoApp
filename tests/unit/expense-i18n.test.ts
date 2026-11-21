@@ -11,8 +11,11 @@ describe('expenseSchema', () => {
     expect(ok.success && ok.data.amount).toBe(1500.5)
     expect(ok.success && ok.data.notes).toBeNull()
   })
-  it('rejects unknown categories', () => {
-    expect(expenseSchema.safeParse({ ...base, category: 'lunch', amount: '10' }).success).toBe(false)
+  it('accepts custom categories, lowercased, and rejects blank or very long ones', () => {
+    const ok = expenseSchema.safeParse({ ...base, category: '  Tender Coconut Picking ', amount: '10' })
+    expect(ok.success && ok.data.category).toBe('tender coconut picking')
+    expect(expenseSchema.safeParse({ ...base, category: '   ', amount: '10' }).success).toBe(false)
+    expect(expenseSchema.safeParse({ ...base, category: 'x'.repeat(41), amount: '10' }).success).toBe(false)
   })
 })
 
