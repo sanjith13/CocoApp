@@ -1,6 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { todayIST } from '@/lib/domain/dates'
+import { oneYearBefore, todayIST } from '@/lib/domain/dates'
 import { fetchDaily, type WeatherDay } from './openMeteo'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -33,6 +33,23 @@ export function monthlyNormals(days: WeatherDay[]): Array<{ month: number; mean_
   }))
 }
 
+/** Computes and stores 10-year monthly rainfall normals (previous 10 full calendar years). */
+async function computeNormals(
+  admin: Admin,
+  farmId: string,
+  lat: number,
+  lon: number,
+  fetchFn: typeof fetch,
+): Promise<void> {
+  const year = Number(todayIST().slice(0, 4))
+  const history = await fetchDaily(lat, lon, `${year - 10}-01-01`, `${year - 1}-12-31`, { archive: true }, fetchFn)
+  const normals = monthlyNormals(history).map((n) => ({ farm_id: farmId, ...n }))
+  if (normals.length > 0) {
+    const { error } = await admin.from('farm_climate_normals').upsert(normals, { onConflict: 'farm_id,month' })
+    if (error) throw new Error(error.message)
+  }
+}
+
 /** Loads the last 12 months of daily weather and 10-year monthly rainfall normals for a farm. */
 export async function backfillFarmWeather(farmId: string): Promise<void> {
   const admin = createAdminClient()
@@ -47,38 +64,36 @@ export async function backfillFarmWeather(farmId: string): Promise<void> {
   const lon = Number(farm.longitude)
 
   const today = todayIST()
-  const year = Number(today.slice(0, 4))
-  const yearAgo = `${year - 1}${today.slice(4)}`
-
-  const recent = await fetchDaily(lat, lon, yearAgo, today, { archive: true })
+  const recent = await fetchDaily(lat, lon, oneYearBefore(today), today, { archive: true })
   await upsertDays(admin, farmId, recent)
-
-  // Previous 10 full calendar years, e.g. 2016-01-01..2025-12-31 when run in 2026.
-  const history = await fetchDaily(lat, lon, `${year - 10}-01-01`, `${year - 1}-12-31`, { archive: true })
-  const normals = monthlyNormals(history).map((n) => ({ farm_id: farmId, ...n }))
-  if (normals.length > 0) {
-    const { error: nErr } = await admin
-      .from('farm_climate_normals')
-      .upsert(normals, { onConflict: 'farm_id,month' })
-    if (nErr) throw new Error(nErr.message)
-  }
+  await computeNormals(admin, farmId, lat, lon, fetch)
 }
 
 /** Pulls the last complete days for every active farm. One farm failing does not stop the rest. */
-export async function ingestRecentWeather(): Promise<{ farms: number; rows: number; errors: string[] }> {
-  const admin = createAdminClient()
+export async function ingestRecentWeather(
+  deps: { admin?: Admin; fetchFn?: typeof fetch } = {},
+): Promise<{ farms: number; rows: number; errors: string[] }> {
+  const admin = deps.admin ?? createAdminClient()
+  const fetchFn = deps.fetchFn ?? fetch
   const { data: farms, error } = await admin
     .from('farms')
     .select('id, latitude, longitude')
     .eq('active', true)
   if (error) throw new Error(error.message)
+  // Farms whose normals never loaded (e.g. archive call failed at creation) get them retried here.
+  const { data: normalRows, error: nErr } = await admin.from('farm_climate_normals').select('farm_id')
+  if (nErr) throw new Error(nErr.message)
+  const haveNormals = new Set((normalRows ?? []).map((r) => r.farm_id as string))
   let rows = 0
   const errors: string[] = []
   for (const farm of farms ?? []) {
     try {
       if (farm.latitude == null || farm.longitude == null) continue
-      const days = await fetchDaily(Number(farm.latitude), Number(farm.longitude), '', '', { archive: false })
+      const days = await fetchDaily(Number(farm.latitude), Number(farm.longitude), '', '', { archive: false }, fetchFn)
       rows += await upsertDays(admin, farm.id, days)
+      if (!haveNormals.has(farm.id)) {
+        await computeNormals(admin, farm.id, Number(farm.latitude), Number(farm.longitude), fetchFn)
+      }
     } catch (e) {
       errors.push(`${farm.id}: ${e instanceof Error ? e.message : String(e)}`)
     }

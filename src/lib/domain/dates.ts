@@ -7,3 +7,10 @@ export function todayIST(now: Date = new Date()): string {
     day: '2-digit',
   }).format(now)
 }
+
+/** The same calendar day one year earlier (ISO YYYY-MM-DD); 29 Feb clamps to 28 Feb. */
+export function oneYearBefore(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const day = m === 2 && d === 29 ? 28 : d
+  return `${String(y - 1).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
