@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
@@ -24,6 +25,9 @@ async function FarmDetail({ params }: { params: Promise<{ id: string }> }) {
         <p className="text-sm text-muted-foreground">
           {current} trees · {farm.acreage} acres
         </p>
+        <Link href={`/weather/${id}`} className="text-sm underline">
+          View weather
+        </Link>
       </div>
 
       <section className="space-y-3">

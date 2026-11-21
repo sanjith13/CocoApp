@@ -1,10 +1,12 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
+import { backfillFarmWeather } from '@/lib/weather/ingest'
 import { farmSchema, treeCountChangeSchema, varietySchema } from '@/lib/validation/farm'
 
 export type ActionResult =
@@ -13,6 +15,17 @@ export type ActionResult =
 
 function fail(error: z.ZodError): ActionResult {
   return { ok: false, error: 'Please fix the highlighted fields.', fieldErrors: z.flattenError(error).fieldErrors as Record<string, string[]> }
+}
+
+/** Runs the slow weather backfill after the response is sent; never throws. */
+function scheduleBackfill(farmId: string) {
+  after(async () => {
+    try {
+      await backfillFarmWeather(farmId)
+    } catch (e) {
+      console.error('Weather backfill failed', farmId, e)
+    }
+  })
 }
 
 /** Creates a farm and its first tree-count row; rolls the farm back if the row fails. */
@@ -30,6 +43,7 @@ export async function createFarm(_prev: ActionResult | null, form: FormData): Pr
     await supabase.from('farms').delete().eq('id', farm.id)
     return { ok: false, error: tcError.message }
   }
+  scheduleBackfill(farm.id)
   revalidatePath('/farms')
   redirect(`/farms/${farm.id}`)
 }
@@ -38,11 +52,17 @@ export async function updateFarm(farmId: string, _prev: ActionResult | null, for
   const parsed = farmSchema.omit({ tree_count: true }).safeParse(Object.fromEntries(form))
   if (!parsed.success) return fail(parsed.error)
   const supabase = await createServerClient()
+  const { data: before } = await supabase.from('farms').select('latitude, longitude').eq('id', farmId).maybeSingle()
   const { error } = await supabase
     .from('farms')
     .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq('id', farmId)
   if (error) return { ok: false, error: error.message }
+  const moved =
+    before != null &&
+    (Number(before.latitude) !== Number(parsed.data.latitude) ||
+      Number(before.longitude) !== Number(parsed.data.longitude))
+  if (moved) scheduleBackfill(farmId)
   revalidatePath('/farms')
   revalidatePath(`/farms/${farmId}`)
   return { ok: true, id: farmId }
