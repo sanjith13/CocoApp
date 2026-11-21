@@ -67,3 +67,6 @@ export async function createTestDb(): Promise<TestDb> {
     },
   }
 }
+
+// Loosely-typed result row for view/function queries in tests.
+export type Row = Record<string, unknown>

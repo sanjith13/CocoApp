@@ -9,7 +9,7 @@ create table harvests (
   harvest_date date not null,
   method text not null check (method in ('mudi', 'ton')),
   mudi_count numeric(8,1),
-  extra_nuts int not null default 0,
+  extra_nuts int not null default 0 check (extra_nuts >= 0),
   coconut_count int generated always as (
     case when method = 'mudi' then round(mudi_count * 200)::int + extra_nuts end
   ) stored,
@@ -22,6 +22,7 @@ create table harvests (
   notes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
+  check (method = 'mudi' or extra_nuts = 0),
   check (
     (method = 'mudi' and mudi_count is not null and mudi_count > 0 and weight_ton is null)
     or (method = 'ton' and weight_ton is not null and weight_ton > 0 and mudi_count is null)
@@ -44,6 +45,7 @@ create table market_rates (
   created_at timestamptz default now()
 );
 
+create index market_rates_harvest_id_idx on market_rates(harvest_id);
 create index market_rates_user_type_date_idx on market_rates(user_id, rate_type, date desc);
 
 -- RLS
@@ -51,16 +53,16 @@ alter table harvests enable row level security;
 alter table market_rates enable row level security;
 
 create policy harvests_owner on harvests for all
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()))
-  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())))
+  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())));
 
 create policy market_rates_owner on market_rates for all
-  using (user_id = auth.uid())
+  using (user_id = (select auth.uid()))
   with check (
-    user_id = auth.uid()
+    user_id = (select auth.uid())
     and (harvest_id is null or exists (
       select 1 from harvests h join farms f on f.id = h.farm_id
-      where h.id = harvest_id and f.user_id = auth.uid()))
+      where h.id = harvest_id and f.user_id = (select auth.uid())))
   );
 
 -- Estimated revenue for an unsold harvest, using the owner's latest matching rate (any market)

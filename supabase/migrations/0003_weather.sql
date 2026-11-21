@@ -26,10 +26,10 @@ alter table weather_daily enable row level security;
 alter table farm_climate_normals enable row level security;
 
 create policy weather_daily_select on weather_daily for select
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())));
 
 create policy farm_climate_normals_select on farm_climate_normals for select
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())));
 
 -- Monthly roll-up with classification.
 -- dry: rain < 60% of the 10-year same-month mean; wet: > 140%; else normal; null without a normal.

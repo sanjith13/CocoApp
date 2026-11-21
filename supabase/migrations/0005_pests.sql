@@ -14,8 +14,8 @@ create index pest_incidents_farm_date on pest_incidents(farm_id, date);
 alter table pest_incidents enable row level security;
 
 create policy pest_incidents_owner on pest_incidents for all
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()))
-  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())))
+  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())));
 
 create view pest_monthly with (security_invoker = true) as
 select farm_id,

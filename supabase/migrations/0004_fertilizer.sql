@@ -27,24 +27,25 @@ create table fertilizer_applications (
   notes text,
   created_at timestamptz not null default now()
 );
+create index fertilizer_applications_fertilizer_id_idx on fertilizer_applications(fertilizer_id);
 create index fertilizer_applications_farm_date on fertilizer_applications(farm_id, date);
 
 alter table fertilizer_master enable row level security;
 alter table fertilizer_applications enable row level security;
 
 create policy fertilizer_master_select on fertilizer_master for select
-  using (user_id is null or user_id = auth.uid());
+  using (user_id is null or user_id = (select auth.uid()));
 create policy fertilizer_master_insert on fertilizer_master for insert
-  with check (user_id = auth.uid());
+  with check (user_id = (select auth.uid()));
 create policy fertilizer_master_update on fertilizer_master for update
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create policy fertilizer_master_delete on fertilizer_master for delete
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 create policy fertilizer_applications_owner on fertilizer_applications for all
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()))
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())))
   with check (
-    exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid())
+    exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid()))
     -- the FK check bypasses RLS, so require the fertilizer to be visible to the caller
     and exists (select 1 from fertilizer_master m where m.id = fertilizer_id)
   );

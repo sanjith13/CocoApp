@@ -139,3 +139,25 @@ test("user A cannot move a variety to B's farm", async () => {
     ),
   ).rejects.toThrow()
 })
+
+test('current_tree_count uses the IST calendar date', async () => {
+  const u = await t.createUser()
+  const farm = (
+    await t.asUser(u, (tx) =>
+      tx.query<{ id: string }>(
+        `insert into farms(name, latitude, longitude, acreage) values ('F', 10.5, 76.2, 2) returning id`,
+      ),
+    )
+  ).rows[0].id
+  const istToday = (
+    await t.db.query<{ d: string }>(`select ((now() at time zone 'Asia/Kolkata')::date)::text as d`)
+  ).rows[0].d
+  await t.asUser(u, (tx) =>
+    tx.query(
+      `insert into farm_tree_counts(farm_id, effective_date, tree_count) values ($1, '2020-01-01', 100), ($1, $2, 250)`,
+      [farm, istToday],
+    ),
+  )
+  const r = await t.asUser(u, (tx) => tx.query<{ n: number }>('select current_tree_count($1) as n', [farm]))
+  expect(r.rows[0].n).toBe(250)
+})

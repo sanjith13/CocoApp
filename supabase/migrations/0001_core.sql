@@ -45,7 +45,9 @@ create index farms_user_id_idx on farms(user_id);
 
 -- Tree count in force on a date; falls back to the earliest row for backdated dates.
 create function tree_count_on(p_farm uuid, p_date date) returns int
-language sql stable as $$
+language sql stable
+set search_path = public
+as $$
   select coalesce(
     (select tree_count from farm_tree_counts
       where farm_id = p_farm and effective_date <= p_date
@@ -57,8 +59,10 @@ language sql stable as $$
 $$;
 
 create function current_tree_count(p_farm uuid) returns int
-language sql stable as $$
-  select tree_count_on(p_farm, current_date)
+language sql stable
+set search_path = public
+as $$
+  select tree_count_on(p_farm, (now() at time zone 'Asia/Kolkata')::date)
 $$;
 
 create view farms_with_trees with (security_invoker = true) as
@@ -71,12 +75,12 @@ alter table farm_tree_counts enable row level security;
 alter table farm_varieties enable row level security;
 
 create policy farms_owner on farms for all
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 create policy farm_tree_counts_owner on farm_tree_counts for all
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()))
-  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())))
+  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())));
 
 create policy farm_varieties_owner on farm_varieties for all
-  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()))
-  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  using (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())))
+  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = (select auth.uid())));

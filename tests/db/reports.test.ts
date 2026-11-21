@@ -89,3 +89,23 @@ test('one report per harvest and reports are private to the farm owner', async (
     ),
   ).rejects.toThrow()
 })
+
+test("a report cannot reference another farm's harvest", async () => {
+  const { u, farm } = await setup()
+  const r2 = await t.asUser(u, (tx) =>
+    tx.query<{ id: string }>(
+      `insert into farms(name, latitude, longitude, acreage) values ('G', 10.5, 76.2, 2) returning id`,
+    ),
+  )
+  const otherFarm = r2.rows[0].id
+  const h = await addHarvest(u, farm, '2025-01-15')
+  await expect(
+    t.asUser(u, (tx) =>
+      tx.query(
+        `insert into reports(farm_id, harvest_id, period_start, period_end, snapshot, prompt_text)
+         values ($1, $2, '2025-01-01', '2025-01-15', '{}', 'x')`,
+        [otherFarm, h],
+      ),
+    ),
+  ).rejects.toThrow()
+})
