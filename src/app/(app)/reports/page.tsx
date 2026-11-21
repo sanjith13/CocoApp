@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
@@ -48,7 +49,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">📄 Reports</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <ReportList />
       </Suspense>
     </div>

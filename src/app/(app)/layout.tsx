@@ -1,10 +1,14 @@
 import { Suspense } from 'react'
 import { BottomTabs } from '@/components/nav/BottomTabs'
 import { Sidebar } from '@/components/nav/Sidebar'
+import { NavProgress } from '@/components/ui/nav-progress'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
+      <Suspense fallback={null}>
+        <NavProgress />
+      </Suspense>
       <Suspense fallback={null}>
         <Sidebar />
       </Suspense>

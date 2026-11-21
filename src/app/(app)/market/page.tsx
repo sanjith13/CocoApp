@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
@@ -77,7 +78,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">💰 Market rates</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <MarketContent />
       </Suspense>
     </div>

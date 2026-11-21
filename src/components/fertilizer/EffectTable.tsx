@@ -1,5 +1,6 @@
 'use client'
 
+import { Loading } from '@/components/ui/loading'
 import { useState } from 'react'
 import { getFertilizerEffect, type EffectRow } from '@/app/(app)/fertilizer/actions'
 import { formatPct } from '@/lib/domain/format'
@@ -32,7 +33,7 @@ export function EffectTable({ applicationId }: { applicationId: string }) {
     >
       <summary className="cursor-pointer text-sm underline">Before/after</summary>
       <div className="mt-2">
-        {state.s === 'loading' && <p className="text-sm text-muted-foreground">Loading...</p>}
+        {state.s === 'loading' && <Loading label="Loading comparison…" className="py-3" />}
         {state.s === 'error' && <p className="text-sm text-destructive">{state.error}</p>}
         {state.s === 'done' && state.rows.length === 0 && (
           <p className="text-sm text-muted-foreground">not enough harvests yet</p>

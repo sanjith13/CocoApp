@@ -1,6 +1,7 @@
 'use client'
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { ChartShell } from './ChartShell'
 import {
   ChartEmpty,
   axisTick,
@@ -19,6 +20,7 @@ export function BarSeries({ data, xKey, series }: ChartProps) {
   const units = axisUnits(series)
   return (
     <div className="h-64 w-full" role="img" aria-label={series.map((s) => s.label).join(', ')}>
+      <ChartShell>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid stroke={gridStroke} strokeDasharray="3 3" vertical={false} />
@@ -48,6 +50,7 @@ export function BarSeries({ data, xKey, series }: ChartProps) {
           ))}
         </BarChart>
       </ResponsiveContainer>
+      </ChartShell>
     </div>
   )
 }

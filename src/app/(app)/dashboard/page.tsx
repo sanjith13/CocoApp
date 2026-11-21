@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
@@ -91,7 +92,7 @@ async function Body({ searchParams }: { searchParams: Promise<SP> }) {
   const tab = TABS.some(([t]) => t === sp.tab) ? (sp.tab as string) : 'production'
   const unit = sp.unit === 'ton' ? 'ton' : 'nuts'
   const cur = { farm, tab, unit }
-  const fallback = <p className="text-muted-foreground">Loading...</p>
+  const fallback = <Loading />
   return (
     <div className="space-y-4">
       <nav aria-label="Farm" className="-mx-4 flex gap-2 overflow-x-auto px-4">
@@ -139,7 +140,7 @@ export default function Page({ searchParams }: { searchParams: Promise<SP> }) {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">🏠 Dashboard</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <Body searchParams={searchParams} />
       </Suspense>
     </div>

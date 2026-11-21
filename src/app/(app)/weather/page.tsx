@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -36,7 +37,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">🌦️ Weather</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <FarmPicker />
       </Suspense>
     </div>

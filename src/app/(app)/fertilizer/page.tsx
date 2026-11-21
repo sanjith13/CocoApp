@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
@@ -69,10 +70,10 @@ export default function Page() {
           Manage fertilizers
         </Link>
       </div>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <FormLoader />
       </Suspense>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <Applications />
       </Suspense>
     </div>

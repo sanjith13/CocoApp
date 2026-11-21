@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -66,7 +67,7 @@ async function FarmDetail({ params }: { params: Promise<{ id: string }> }) {
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+    <Suspense fallback={<Loading />}>
       <FarmDetail params={params} />
     </Suspense>
   )

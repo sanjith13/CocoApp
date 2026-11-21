@@ -1,3 +1,4 @@
+import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -147,7 +148,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           All reports
         </Link>
       </div>
-      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+      <Suspense fallback={<Loading />}>
         <Report params={params} />
       </Suspense>
     </div>
