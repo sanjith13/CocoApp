@@ -29,6 +29,7 @@ export type TestDb = {
   asUser<T>(userId: string, fn: (tx: Transaction) => Promise<T>): Promise<T>
   asService<T>(fn: (tx: Transaction) => Promise<T>): Promise<T>
   createUser(): Promise<string>
+  close(): Promise<void>
 }
 
 function migrationFiles(): string[] {
@@ -57,6 +58,7 @@ export async function createTestDb(): Promise<TestDb> {
         return fn(tx)
       }),
     asService: (fn) => db.transaction((tx) => fn(tx)),
+    close: () => db.close(),
     async createUser() {
       const r = await db.query<{ id: string }>(
         'insert into auth.users(id) values (gen_random_uuid()) returning id',
