@@ -28,6 +28,7 @@ export default function LoginPage() {
     // Full navigation, not router.replace: the client router may hold a cached
     // pre-login prefetch of /dashboard (a redirect back to /login), which would
     // leave this page stuck on "Signing in…". A hard load sends the new session cookie.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- intentional hard load, see above
     window.location.assign('/dashboard')
   }
 
