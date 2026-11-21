@@ -2,6 +2,9 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
+import { dayLabel, num } from '@/lib/domain/dashboard'
+import { LineTrend } from '@/components/charts/LineTrend'
+import { BarSeries } from '@/components/charts/BarSeries'
 
 async function WeatherTable({ params }: { params: Promise<{ farmId: string }> }) {
   const { farmId } = await params
@@ -16,6 +19,13 @@ async function WeatherTable({ params }: { params: Promise<{ farmId: string }> })
       .limit(120),
   ])
   if (!farm) notFound()
+  const trend = [...(days ?? [])].reverse().map((d) => ({
+    x: dayLabel(d.date),
+    tmin: num(d.temp_min),
+    tmax: num(d.temp_max),
+    rain: num(d.rainfall_mm),
+    hum: num(d.humidity_mean),
+  }))
   return (
     <div className="space-y-4">
       <div>
@@ -29,6 +39,26 @@ async function WeatherTable({ params }: { params: Promise<{ farmId: string }> })
           No weather data yet. It is loaded after the farm is saved and refreshed daily.
         </p>
       ) : (
+        <>
+          <section className="space-y-1">
+            <h2 className="font-medium">Temperature</h2>
+            <LineTrend
+              data={trend}
+              xKey="x"
+              series={[
+                { key: 'tmax', label: 'Max', unit: '°C' },
+                { key: 'tmin', label: 'Min', unit: '°C' },
+              ]}
+            />
+          </section>
+          <section className="space-y-1">
+            <h2 className="font-medium">Rainfall</h2>
+            <BarSeries data={trend} xKey="x" series={[{ key: 'rain', label: 'Rainfall', unit: 'mm' }]} />
+          </section>
+          <section className="space-y-1">
+            <h2 className="font-medium">Humidity</h2>
+            <LineTrend data={trend} xKey="x" series={[{ key: 'hum', label: 'Humidity', unit: '%' }]} />
+          </section>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-muted-foreground">
@@ -53,6 +83,7 @@ async function WeatherTable({ params }: { params: Promise<{ farmId: string }> })
             ))}
           </tbody>
         </table>
+        </>
       )}
     </div>
   )
