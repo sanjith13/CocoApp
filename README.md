@@ -122,7 +122,7 @@ Run through this on a phone:
 
 ```
 src/
-  app/          Next.js routes: (auth) login, (app) feature pages (dashboard, farms, harvests, market, fertilizer, pests, weather, reports), api/ (cron, fixtures, unit)
+  app/          Next.js routes: (auth) login, (app) feature pages (dashboard, farms, harvests, market, fertilizer, pests, weather, reports), api/cron (weather cron route)
   lib/
     domain/     dashboard analytics, harvest calculations, date and format helpers
     reports/    harvest report generation, snapshots and AI prompt
@@ -133,6 +133,7 @@ supabase/
   migrations/   SQL migrations 0001 to 0008
 tests/
   db/           database tests run against PGlite (Postgres in-process)
+  fixtures/     test fixtures
   unit/         unit tests (validation, domain logic, weather, prompt, cron auth)
 vercel.json     cron schedule
 .env.example    environment variable template
