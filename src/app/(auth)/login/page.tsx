@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase/browser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Logo } from '@/components/ui/logo'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +36,8 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Sign in</h1>
+      <Logo />
+      <h1 className="text-2xl font-semibold">Welcome back 🥥</h1>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="email">Email</Label>
@@ -47,6 +50,12 @@ export default function LoginPage() {
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <Button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</Button>
       </form>
+      <p className="text-sm text-muted-foreground">
+        New here?{' '}
+        <Link href="/signup" className="underline">
+          Create an account
+        </Link>
+      </p>
     </main>
   )
 }

@@ -64,7 +64,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Fertilizer</h1>
+        <h1 className="text-xl font-semibold">🌱 Fertilizer</h1>
         <Link href="/fertilizer/master" className="text-sm underline">
           Manage fertilizers
         </Link>

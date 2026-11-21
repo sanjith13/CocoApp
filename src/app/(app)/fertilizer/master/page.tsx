@@ -32,7 +32,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Fertilizers</h1>
+        <h1 className="text-xl font-semibold">🌱 Fertilizers</h1>
         <Link href="/fertilizer" className="text-sm underline">
           Applications
         </Link>

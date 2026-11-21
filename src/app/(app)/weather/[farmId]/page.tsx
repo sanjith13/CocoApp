@@ -29,7 +29,7 @@ async function WeatherTable({ params }: { params: Promise<{ farmId: string }> })
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Weather - {farm.name}</h1>
+        <h1 className="text-xl font-semibold">🌦️ Weather - {farm.name}</h1>
         <Link href={`/farms/${farm.id}`} className="text-sm text-muted-foreground underline">
           Back to farm
         </Link>

@@ -8,12 +8,12 @@ import { moreLinks } from './items'
 import { cn } from '@/lib/utils'
 
 const tabs = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/harvests/new', label: 'Harvest +' },
-  { href: '/farms', label: 'Farms' },
+  { href: '/dashboard', label: 'Dashboard', emoji: '🏠' },
+  { href: '/harvests/new', label: 'Harvest +', emoji: '🥥' },
+  { href: '/farms', label: 'Farms', emoji: '🌴' },
 ] as const
 
-const tabClass = 'flex flex-1 items-center justify-center py-3 text-xs font-medium'
+const tabClass = 'flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium'
 
 export function BottomTabs() {
   const pathname = usePathname()
@@ -28,11 +28,15 @@ export function BottomTabs() {
           href={t.href}
           className={cn(tabClass, pathname === t.href ? 'text-primary' : 'text-muted-foreground')}
         >
+          <span aria-hidden className="text-lg leading-none">{t.emoji}</span>
           {t.label}
         </Link>
       ))}
       <Sheet>
-        <SheetTrigger className={cn(tabClass, 'text-muted-foreground')}>More</SheetTrigger>
+        <SheetTrigger className={cn(tabClass, 'text-muted-foreground')}>
+          <span aria-hidden className="text-lg leading-none">➕</span>
+          More
+        </SheetTrigger>
         <SheetContent side="bottom">
           <SheetHeader>
             <SheetTitle>More</SheetTitle>
@@ -41,6 +45,7 @@ export function BottomTabs() {
             {moreLinks.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="block py-3 text-base">
+                  <span aria-hidden className="mr-2">{l.emoji}</span>
                   {l.label}
                 </Link>
               </li>

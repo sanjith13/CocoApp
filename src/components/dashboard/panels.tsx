@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { LineTrend } from '@/components/charts/LineTrend'
 import { BarSeries } from '@/components/charts/BarSeries'
+import { BarLineCombo } from '@/components/charts/BarLineCombo'
 import { StackedBars } from '@/components/charts/StackedBars'
 import { ChartEmpty, type ChartRow } from '@/components/charts/shared'
 import { avgBy, dayLabel, monthLabel, monthName, monthsAgoFirst, num, seasonalReady, sumBy, yearsAgo } from '@/lib/domain/dashboard'
@@ -49,7 +50,9 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
   const today = todayIST()
   const harvestSince = yearsAgo(today, 3)
   const monthSince = monthsAgoFirst(today, 36)
-  const [statsDesc, monthly, yearly, seasonal, coverage, farms] = await Promise.all([
+  const rateType = unit === 'nuts' ? 'whole_nut_per_nut' : 'dehusked_per_ton'
+  const priceUnit = unit === 'nuts' ? '₹/nut' : '₹/ton'
+  const [statsDesc, monthly, yearly, seasonal, coverage, farms, prices] = await Promise.all([
     // Newest 1000 harvests in the last 3 years, reversed below for display.
     scope(
       supabase
@@ -80,8 +83,19 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
     ),
     scope(supabase.from('production_coverage').select('first_date, last_date, cal_months').eq('method', method)).limit(1000),
     supabase.from('farms').select('id, name').limit(1000),
+    // Price is shown beside production only; it never feeds revenue or quantity totals.
+    fetchAll((a, b) =>
+      supabase
+        .from('market_monthly')
+        .select('month, avg_rate')
+        .eq('rate_type', rateType)
+        .gte('month', monthSince)
+        .order('month')
+        .order('market_name')
+        .range(a, b),
+    ),
   ])
-  const err = statsDesc.error ?? monthly.error ?? yearly.error ?? seasonal.error ?? coverage.error ?? farms.error
+  const err = statsDesc.error ?? monthly.error ?? yearly.error ?? seasonal.error ?? coverage.error ?? farms.error ?? prices.error
   if (err) return <PanelError message={err.message} />
   const stats = { data: [...(statsDesc.data ?? [])].reverse() }
 
@@ -90,7 +104,14 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
     { q: sumBy(stats.data ?? [], (r) => r.harvest_date, (r) => num(r.quantity)) },
     dayLabel,
   )
-  const monthRows = toRows('x', { q: sumBy(monthly.data ?? [], (r) => r.month, (r) => num(r.quantity)) }, monthLabel)
+  const monthRows = toRows(
+    'x',
+    {
+      q: sumBy(monthly.data ?? [], (r) => r.month, (r) => num(r.quantity)),
+      p: avgBy(prices.data ?? [], (r) => r.month, (r) => num(r.avg_rate)),
+    },
+    monthLabel,
+  )
   const yearRows = toRows('x', { q: sumBy(yearly.data ?? [], (r) => String(r.year), (r) => num(r.quantity)) }, (k) => k)
 
   const fullYear = seasonalReady(coverage.data ?? [])
@@ -112,8 +133,13 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
       <Section title="Each harvest" note={`Quantity per harvest (${u})`}>
         <LineTrend data={perHarvest} xKey="x" series={[{ key: 'q', label: 'Harvest', unit: u }]} />
       </Section>
-      <Section title="Monthly production">
-        <BarSeries data={monthRows} xKey="x" series={[{ key: 'q', label: 'Monthly total', unit: u }]} />
+      <Section title="Monthly production and price" note={`Bars: production (${u}). Line: average ${unit === 'nuts' ? 'whole nut' : 'dehusked'} market price (${priceUnit}).`}>
+        <BarLineCombo
+          data={monthRows}
+          xKey="x"
+          bars={[{ key: 'q', label: 'Monthly total', unit: u }]}
+          lines={[{ key: 'p', label: 'Avg price', unit: priceUnit }]}
+        />
       </Section>
       <Section title="Yearly production">
         <BarSeries data={yearRows} xKey="x" series={[{ key: 'q', label: 'Yearly total', unit: u }]} />

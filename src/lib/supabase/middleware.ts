@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 export function isPublicPath(path: string): boolean {
   return (
     path === '/login' ||
+    path === '/signup' ||
+    path === '/auth/callback' ||
     path.startsWith('/api/cron/') ||
     path.startsWith('/_next/') ||
     path === '/favicon.ico'

@@ -27,7 +27,7 @@ async function Content({ params, searchParams }: Props) {
 export default function Page({ params, searchParams }: Props) {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Edit harvest</h1>
+      <h1 className="text-xl font-semibold">🥥 Edit harvest</h1>
       <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
         <Content params={params} searchParams={searchParams} />
       </Suspense>

@@ -27,6 +27,8 @@ describe('domain helpers', () => {
   })
   it('isPublicPath', () => {
     expect(isPublicPath('/login')).toBe(true)
+    expect(isPublicPath('/signup')).toBe(true)
+    expect(isPublicPath('/auth/callback')).toBe(true)
     expect(isPublicPath('/api/cron/weather')).toBe(true)
     expect(isPublicPath('/_next/static/x.js')).toBe(true)
     expect(isPublicPath('/dashboard')).toBe(false)

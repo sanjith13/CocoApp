@@ -76,7 +76,7 @@ async function MarketContent() {
 export default function Page() {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Market rates</h1>
+      <h1 className="text-xl font-semibold">💰 Market rates</h1>
       <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
         <MarketContent />
       </Suspense>
