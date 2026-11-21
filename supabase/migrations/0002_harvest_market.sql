@@ -23,8 +23,8 @@ create table harvests (
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   check (
-    (method = 'mudi' and mudi_count > 0 and weight_ton is null)
-    or (method = 'ton' and weight_ton > 0 and mudi_count is null)
+    (method = 'mudi' and mudi_count is not null and mudi_count > 0 and weight_ton is null)
+    or (method = 'ton' and weight_ton is not null and weight_ton > 0 and mudi_count is null)
   ),
   unique (farm_id, harvest_date)
 );

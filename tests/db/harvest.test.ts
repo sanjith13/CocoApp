@@ -199,3 +199,17 @@ test('RLS: other user sees no harvests or rates', async () => {
     ),
   ).rejects.toThrow()
 })
+
+test('rejects harvest missing its quantity', async () => {
+  const { u, farm } = await setup()
+  for (const method of ['mudi', 'ton']) {
+    await expect(
+      t.asUser(u, (tx) =>
+        tx.query(`insert into harvests(farm_id, harvest_date, method) values ($1, '2026-01-10', $2)`, [
+          farm,
+          method,
+        ]),
+      ),
+    ).rejects.toThrow()
+  }
+})
