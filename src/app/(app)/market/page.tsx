@@ -2,6 +2,8 @@ import { Suspense } from 'react'
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
 import { MarketRateForm } from '@/components/market/MarketRateForm'
+import { ConfirmDeleteButton } from '@/components/common/ConfirmDeleteButton'
+import { deleteMarketRate } from './actions'
 import { RATE_LABELS, mergeMarketNames, type RateType } from '@/lib/validation/market'
 
 function RateTable({
@@ -25,6 +27,7 @@ function RateTable({
                 <th className="p-2">Type</th>
                 <th className="p-2 text-right">Rate</th>
                 <th className="p-2">Date</th>
+                {rows.some((r) => r.id) && <th className="p-2"></th>}
               </tr>
             </thead>
             <tbody>
@@ -34,6 +37,9 @@ function RateTable({
                   <td className="p-2">{RATE_LABELS[r.rate_type as RateType] ?? r.rate_type}</td>
                   <td className="p-2 text-right">{r.rate}</td>
                   <td className="p-2">{r.date}</td>
+                  {rows.some((x) => x.id) && (
+                    <td className="p-2">{r.id && <ConfirmDeleteButton id={r.id} action={deleteMarketRate} />}</td>
+                  )}
                 </tr>
               ))}
             </tbody>

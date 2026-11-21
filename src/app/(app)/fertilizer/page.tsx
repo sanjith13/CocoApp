@@ -4,9 +4,10 @@ import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
 import { Card } from '@/components/ui/card'
 import { ApplicationForm } from '@/components/fertilizer/ApplicationForm'
+import { ConfirmDeleteButton } from '@/components/common/ConfirmDeleteButton'
+import { deleteApplication } from './actions'
 import { EffectTable } from '@/components/fertilizer/EffectTable'
 
-const CAPTION = 'Before/after comparison — weather and season also affect yield.'
 const dash = (n: number | null, digits: number) => (n === null ? '—' : Number(n).toFixed(digits))
 
 async function Applications() {
@@ -41,6 +42,7 @@ async function Applications() {
               Per tree: N {dash(r.n_per_tree_kg, 4)} / P {dash(r.p_per_tree_kg, 4)} / K {dash(r.k_per_tree_kg, 4)} kg
             </div>
             <EffectTable applicationId={r.id} />
+            <ConfirmDeleteButton id={r.id} action={deleteApplication} />
           </Card>
         </li>
       ))}

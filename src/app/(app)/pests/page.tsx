@@ -1,13 +1,15 @@
 import { Suspense } from 'react'
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
+import { deletePestIncident } from './actions'
 import { Card } from '@/components/ui/card'
+import { ConfirmDeleteButton } from '@/components/common/ConfirmDeleteButton'
 import { PestForm } from '@/components/pests/PestForm'
 
 const SEV_CLS: Record<string, string> = {
-  high: 'text-destructive',
-  medium: 'text-amber-600',
-  low: 'text-muted-foreground',
+  high: 'text-red-700 dark:text-red-400',
+  medium: 'text-amber-700 dark:text-amber-400',
+  low: 'text-green-700 dark:text-green-400',
 }
 
 async function Incidents() {
@@ -35,6 +37,7 @@ async function Incidents() {
             <div className="text-sm text-muted-foreground">{farmName.get(r.farm_id) ?? 'Farm'}</div>
             <div className={`text-sm font-medium capitalize ${SEV_CLS[r.severity] ?? ''}`}>{r.severity} severity</div>
             {r.remarks ? <div className="text-sm">{r.remarks}</div> : null}
+            <ConfirmDeleteButton id={r.id} action={deletePestIncident} />
           </Card>
         </li>
       ))}

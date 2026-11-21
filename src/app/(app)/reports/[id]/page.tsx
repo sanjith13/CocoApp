@@ -4,8 +4,19 @@ import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
 import { PromptActions } from '@/components/reports/PromptActions'
+import { RegenerateButton } from '@/components/reports/RegenerateButton'
 import { formatINR, formatPct } from '@/lib/domain/format'
 import type { ReportSnapshot } from '@/lib/reports/snapshot'
+
+const formatGenerated = (iso: string) =>
+  new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso))
 
 const dash = (n: number | null, dp: number) => (n === null ? '—' : n.toFixed(dp))
 
@@ -37,15 +48,31 @@ async function Report({ params }: { params: Promise<{ id: string }> }) {
     .eq('harvest_id', id)
     .maybeSingle()
   if (error) return <p className="text-destructive">{error.message}</p>
-  if (!data) notFound()
+  if (!data) {
+    const { data: harvest, error: hErr } = await supabase.from('harvests').select('id').eq('id', id).maybeSingle()
+    if (hErr) return <p className="text-destructive">{hErr.message}</p>
+    if (!harvest) notFound()
+    return (
+      <Section title="No report yet">
+        <p className="text-muted-foreground">This harvest has no report. Generate one from the saved data.</p>
+        <RegenerateButton harvestId={id} label="Generate report" />
+      </Section>
+    )
+  }
   const s = data.snapshot as ReportSnapshot
   const h = s.harvest
   const w = s.weather
   const f = s.fertilizer
   const qty = `${h.quantity} ${h.unit}${h.nuts !== undefined ? ` (${h.nuts.toLocaleString('en-IN')} nuts)` : ''}`
 
+  const generatedOn = formatGenerated(data.generated_at)
+
   return (
     <>
+      <div className="no-print flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">Generated {generatedOn}</span>
+        <RegenerateButton harvestId={id} label={`Regenerate report (generated ${generatedOn})`} />
+      </div>
       <Section title="Farm">
         <Row k="Name" v={s.farm.name} />
         <Row k="Location" v={s.farm.location ?? '—'} />
@@ -99,7 +126,7 @@ async function Report({ params }: { params: Promise<{ id: string }> }) {
           s.pests.map((p, i) => <Row key={i} k={`${p.name} (${p.severity})`} v={p.date} />)
         )}
       </Section>
-      <Section title="Market">
+      <Section title={`Market (rates as of ${generatedOn.split(',')[0]})`}>
         <Row k="Whole nut" v={s.market.wholeNut === null ? '—' : `${formatINR(s.market.wholeNut)}/nut`} />
         <Row k="Dehusked" v={s.market.dehusked === null ? '—' : `${formatINR(s.market.dehusked)}/ton`} />
         <Row k="Copra" v={s.market.copra === null ? '—' : `${formatINR(s.market.copra)}/kg`} />

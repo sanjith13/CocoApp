@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
+import { uuidSchema } from '@/lib/validation/common'
 import { pestSchema } from '@/lib/validation/pest'
 
 export type PestActionResult =
@@ -23,6 +24,17 @@ export async function savePestIncident(
   }
   const supabase = await createServerClient()
   const { error } = await supabase.from('pest_incidents').insert(parsed.data)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath('/pests')
+  revalidatePath('/dashboard')
+  return { ok: true }
+}
+
+export async function deletePestIncident(id: string): Promise<PestActionResult> {
+  const parsed = uuidSchema.safeParse(id)
+  if (!parsed.success) return { ok: false, error: 'Invalid incident' }
+  const supabase = await createServerClient()
+  const { error } = await supabase.from('pest_incidents').delete().eq('id', parsed.data)
   if (error) return { ok: false, error: error.message }
   revalidatePath('/pests')
   revalidatePath('/dashboard')
