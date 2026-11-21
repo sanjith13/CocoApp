@@ -1,14 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase/browser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -27,8 +25,10 @@ export default function LoginPage() {
       setBusy(false)
       return
     }
-    router.replace('/dashboard')
-    router.refresh()
+    // Full navigation, not router.replace: the client router may hold a cached
+    // pre-login prefetch of /dashboard (a redirect back to /login), which would
+    // leave this page stuck on "Signing in…". A hard load sends the new session cookie.
+    window.location.assign('/dashboard')
   }
 
   return (
