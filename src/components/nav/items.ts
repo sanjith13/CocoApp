@@ -4,6 +4,7 @@ export const sidebarLinks = [
   { href: '/harvests', label: 'Harvests', emoji: '🧺' },
   { href: '/farms', label: 'Farms', emoji: '🌴' },
   { href: '/market', label: 'Market', emoji: '💰' },
+  { href: '/expenses', label: 'Expenses', emoji: '🧾' },
   { href: '/fertilizer', label: 'Fertilizer', emoji: '🌱' },
   { href: '/pests', label: 'Pests', emoji: '🐛' },
   { href: '/weather', label: 'Weather', emoji: '🌦️' },
@@ -11,5 +12,5 @@ export const sidebarLinks = [
 ] as const
 
 export const moreLinks = sidebarLinks.filter((l) =>
-  ['/harvests', '/market', '/fertilizer', '/pests', '/weather', '/reports'].includes(l.href),
+  ['/harvests', '/market', '/expenses', '/fertilizer', '/pests', '/weather', '/reports'].includes(l.href),
 )

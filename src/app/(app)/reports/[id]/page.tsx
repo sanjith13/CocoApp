@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -143,7 +144,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return (
     <div className="space-y-4">
       <div className="no-print flex items-center justify-between">
-        <h1 className="text-xl font-semibold">📄 Harvest report</h1>
+        <h1 className="text-xl font-semibold">📄 <T>Harvest report</T></h1>
         <Link href="/reports" className="text-sm underline">
           All reports
         </Link>

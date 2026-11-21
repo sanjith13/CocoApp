@@ -1,5 +1,6 @@
 'use client'
 
+import { T, LanguageToggle } from '@/lib/i18n/client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -29,31 +30,32 @@ export function BottomTabs() {
           className={cn(tabClass, pathname === t.href ? 'text-primary' : 'text-muted-foreground')}
         >
           <span aria-hidden className="text-lg leading-none">{t.emoji}</span>
-          {t.label}
+          <T>{t.label}</T>
         </Link>
       ))}
       <Sheet>
         <SheetTrigger className={cn(tabClass, 'text-muted-foreground')}>
           <span aria-hidden className="text-lg leading-none">➕</span>
-          More
+          <T>More</T>
         </SheetTrigger>
         <SheetContent side="bottom">
           <SheetHeader>
-            <SheetTitle>More</SheetTitle>
+            <SheetTitle><T>More</T></SheetTitle>
           </SheetHeader>
+          <div className="px-4 pb-2"><LanguageToggle /></div>
           <ul className="flex flex-col px-4 pb-4">
             {moreLinks.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="block py-3 text-base">
                   <span aria-hidden className="mr-2">{l.emoji}</span>
-                  {l.label}
+                  <T>{l.label}</T>
                 </Link>
               </li>
             ))}
             <li>
               <form action={signOut}>
                 <button type="submit" className="block w-full py-3 text-left text-base">
-                  Sign out
+                  <T>Sign out</T>
                 </button>
               </form>
             </li>

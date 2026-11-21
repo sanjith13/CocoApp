@@ -1,5 +1,6 @@
 'use client'
 
+import { T, LanguageToggle } from '@/lib/i18n/client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/(app)/actions'
@@ -25,14 +26,15 @@ export function Sidebar() {
             )}
           >
             <span aria-hidden className="mr-2">{l.emoji}</span>
-            {l.label}
+            <T>{l.label}</T>
           </Link>
         ))}
       </nav>
+      <div className="mb-3"><LanguageToggle /></div>
       <form action={signOut}>
         <button type="submit" className="w-full rounded-lg px-3 py-2 text-left text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent">
           <span aria-hidden className="mr-2">👋</span>
-          Sign out
+          <T>Sign out</T>
         </button>
       </form>
     </aside>

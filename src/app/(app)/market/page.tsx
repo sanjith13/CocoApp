@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import { createServerClient } from '@/lib/supabase/server'
@@ -77,7 +78,7 @@ async function MarketContent() {
 export default function Page() {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">💰 Market rates</h1>
+      <h1 className="text-xl font-semibold">💰 <T>Market rates</T></h1>
       <Suspense fallback={<Loading />}>
         <MarketContent />
       </Suspense>

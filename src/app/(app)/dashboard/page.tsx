@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -97,7 +98,7 @@ async function Body({ searchParams }: { searchParams: Promise<SP> }) {
     <div className="space-y-4">
       <nav aria-label="Farm" className="-mx-4 flex gap-2 overflow-x-auto px-4">
         <Link href={href({ ...cur, farm: null })} className={pill(!farm)}>
-          All farms
+          <T>All farms</T>
         </Link>
         {farms.map((f) => (
           <Link key={f.id} href={href({ ...cur, farm: f.id })} className={pill(farm === f.id)}>
@@ -111,17 +112,17 @@ async function Body({ searchParams }: { searchParams: Promise<SP> }) {
       <nav aria-label="Panels" className="-mx-4 flex gap-2 overflow-x-auto px-4">
         {TABS.map(([t, label]) => (
           <Link key={t} href={href({ ...cur, tab: t })} className={pill(tab === t)}>
-            {label}
+            <T>{label}</T>
           </Link>
         ))}
       </nav>
       {tab === 'production' && (
         <nav aria-label="Unit" className="flex gap-2">
           <Link href={href({ ...cur, unit: 'nuts' })} className={pill(unit === 'nuts')}>
-            Nuts (mudi)
+            <T>Nuts (mudi)</T>
           </Link>
           <Link href={href({ ...cur, unit: 'ton' })} className={pill(unit === 'ton')}>
-            Tons
+            <T>Tons</T>
           </Link>
         </nav>
       )}
@@ -139,7 +140,7 @@ async function Body({ searchParams }: { searchParams: Promise<SP> }) {
 export default function Page({ searchParams }: { searchParams: Promise<SP> }) {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">🏠 Dashboard</h1>
+      <h1 className="text-xl font-semibold">🏠 <T>Dashboard</T></h1>
       <Suspense fallback={<Loading />}>
         <Body searchParams={searchParams} />
       </Suspense>

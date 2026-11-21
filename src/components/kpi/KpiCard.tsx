@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Card } from '@/components/ui/card'
 
 export function KpiCard({
@@ -11,9 +12,9 @@ export function KpiCard({
 }) {
   return (
     <Card className="gap-1 p-4">
-      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground"><T>{label}</T></div>
       <div className="text-xl font-semibold leading-tight">{value}</div>
-      {sub ? <div className="text-xs text-muted-foreground">{sub}</div> : null}
+      {sub ? <div className="text-xs text-muted-foreground"><T>{sub}</T></div> : null}
     </Card>
   )
 }

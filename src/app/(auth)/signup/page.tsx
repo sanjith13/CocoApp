@@ -1,5 +1,6 @@
 'use client'
 
+import { T, LanguageToggle, useT } from '@/lib/i18n/client'
 import { useState } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@/lib/supabase/browser'
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Logo } from '@/components/ui/logo'
 
 export default function SignupPage() {
+  const t = useT()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -53,29 +55,32 @@ export default function SignupPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
-      <Logo />
-      <h1 className="text-2xl font-semibold">Create your account 🌴</h1>
+      <div className="flex items-center justify-between">
+        <Logo />
+        <LanguageToggle />
+      </div>
+      <h1 className="text-2xl font-semibold"><T>Create your account</T> 🌴</h1>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email"><T>Email</T></Label>
           <Input id="email" name="email" type="email" autoComplete="email" required />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password"><T>Password</T></Label>
           <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="confirm">Confirm password</Label>
+          <Label htmlFor="confirm"><T>Confirm password</T></Label>
           <Input id="confirm" name="confirm" type="password" autoComplete="new-password" minLength={8} required />
         </div>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
-        <Button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Sign up'}</Button>
+        <Button type="submit" disabled={busy}>{busy ? t('Creating account…') : t('Sign up')}</Button>
       </form>
       <p className="text-sm text-muted-foreground">
-        Already have an account?{' '}
+        <T>Already have an account?</T>{' '}
         <Link href="/login" className="underline">
-          Sign in
+          <T>Sign in</T>
         </Link>
       </p>
     </main>

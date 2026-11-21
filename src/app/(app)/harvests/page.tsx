@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -52,7 +53,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">🧺 Harvests</h1>
+        <h1 className="text-xl font-semibold">🧺 <T>Harvests</T></h1>
         <Link href="/harvests/new" className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-primary-foreground">
           Add harvest
         </Link>

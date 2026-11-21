@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 /** Loading indicator for Suspense fallbacks: a spinner ring around a coconut. */
 export function Loading({ label = 'Loading…', className = '' }: { label?: string; className?: string }) {
   return (
@@ -11,7 +12,7 @@ export function Loading({ label = 'Loading…', className = '' }: { label?: stri
           🥥
         </span>
       </span>
-      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm text-muted-foreground"><T>{label}</T></span>
     </div>
   )
 }

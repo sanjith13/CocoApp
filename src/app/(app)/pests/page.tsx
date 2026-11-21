@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import { createServerClient } from '@/lib/supabase/server'
@@ -56,7 +57,7 @@ async function FormLoader() {
 export default function Page() {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">🐛 Pests</h1>
+      <h1 className="text-xl font-semibold">🐛 <T>Pests</T></h1>
       <Suspense fallback={<Loading />}>
         <FormLoader />
       </Suspense>

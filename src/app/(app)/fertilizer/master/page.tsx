@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -33,7 +34,7 @@ export default function Page() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">🌱 Fertilizers</h1>
+        <h1 className="text-xl font-semibold">🌱 <T>Fertilizers</T></h1>
         <Link href="/fertilizer" className="text-sm underline">
           Applications
         </Link>

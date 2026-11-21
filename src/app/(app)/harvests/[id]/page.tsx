@@ -1,3 +1,4 @@
+import { T } from '@/lib/i18n/client'
 import { Loading } from '@/components/ui/loading'
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -28,7 +29,7 @@ async function Content({ params, searchParams }: Props) {
 export default function Page({ params, searchParams }: Props) {
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">🥥 Edit harvest</h1>
+      <h1 className="text-xl font-semibold">🥥 <T>Edit harvest</T></h1>
       <Suspense fallback={<Loading />}>
         <Content params={params} searchParams={searchParams} />
       </Suspense>
