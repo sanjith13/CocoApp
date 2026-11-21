@@ -51,3 +51,30 @@ export function monthSpan(minIso: string, maxIso: string): number {
   const [y2, m2] = maxIso.split('-').map(Number)
   return (y2 - y1) * 12 + (m2 - m1)
 }
+
+export type Coverage = { first_date: string; last_date: string; cal_months: number }
+
+/**
+ * Seasonal view is meaningful for a farm+method only when its harvests span at least 365 days
+ * and touch at least 6 distinct calendar months. True if any coverage row qualifies.
+ */
+export function seasonalReady(rows: Coverage[]): boolean {
+  return rows.some((r) => {
+    const days = (Date.parse(r.last_date) - Date.parse(r.first_date)) / 86400_000
+    return days >= 365 && r.cal_months >= 6
+  })
+}
+
+/** First day of the month `n` months before the month of `iso`. */
+export function monthsAgoFirst(iso: string, n: number): string {
+  const [y, m] = iso.split('-').map(Number)
+  const t = y * 12 + (m - 1) - n
+  return `${String(Math.floor(t / 12)).padStart(4, '0')}-${String((t % 12) + 1).padStart(2, '0')}-01`
+}
+
+/** Same month/day `n` years earlier (29 Feb clamps to 28 Feb). */
+export function yearsAgo(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const day = m === 2 && d === 29 ? 28 : d
+  return `${String(y - n).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}

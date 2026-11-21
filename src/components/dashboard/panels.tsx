@@ -4,7 +4,9 @@ import { LineTrend } from '@/components/charts/LineTrend'
 import { BarSeries } from '@/components/charts/BarSeries'
 import { StackedBars } from '@/components/charts/StackedBars'
 import { ChartEmpty, type ChartRow } from '@/components/charts/shared'
-import { avgBy, dayLabel, monthLabel, monthName, monthSpan, num, sumBy } from '@/lib/domain/dashboard'
+import { avgBy, dayLabel, monthLabel, monthName, monthsAgoFirst, num, seasonalReady, sumBy, yearsAgo } from '@/lib/domain/dashboard'
+import { todayIST } from '@/lib/domain/dates'
+import { fetchAll } from '@/lib/supabase/paged'
 import { RATE_LABELS, type RateType } from '@/lib/validation/market'
 
 export type PanelProps = { farm: string | null }
@@ -44,15 +46,44 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
   const method = unit === 'nuts' ? 'mudi' : 'ton'
   const u = unit === 'nuts' ? 'nuts' : 't'
   const scope = farmScope(farm)
-  const [stats, monthly, yearly, seasonal, farms] = await Promise.all([
-    scope(supabase.from('harvest_stats').select('farm_id, harvest_date, quantity, per_tree').eq('method', method)).order('harvest_date'),
-    scope(supabase.from('production_monthly').select('month, quantity').eq('method', method)),
-    scope(supabase.from('production_yearly').select('year, quantity').eq('method', method)),
-    scope(supabase.from('production_seasonal').select('cal_month, avg_quantity, years').eq('method', method)),
-    supabase.from('farms').select('id, name'),
+  const today = todayIST()
+  const harvestSince = yearsAgo(today, 3)
+  const monthSince = monthsAgoFirst(today, 36)
+  const [statsDesc, monthly, yearly, seasonal, coverage, farms] = await Promise.all([
+    // Newest 1000 harvests in the last 3 years, reversed below for display.
+    scope(
+      supabase
+        .from('harvest_stats')
+        .select('farm_id, harvest_date, quantity, per_tree')
+        .eq('method', method)
+        .gte('harvest_date', harvestSince),
+    )
+      .order('harvest_date', { ascending: false })
+      .limit(1000),
+    fetchAll((a, b) =>
+      scope(supabase.from('production_monthly').select('farm_id, month, quantity').eq('method', method).gte('month', monthSince))
+        .order('month')
+        .order('farm_id')
+        .range(a, b),
+    ),
+    fetchAll((a, b) =>
+      scope(supabase.from('production_yearly').select('farm_id, year, quantity').eq('method', method))
+        .order('year')
+        .order('farm_id')
+        .range(a, b),
+    ),
+    fetchAll((a, b) =>
+      scope(supabase.from('production_seasonal').select('farm_id, cal_month, avg_quantity, years').eq('method', method))
+        .order('cal_month')
+        .order('farm_id')
+        .range(a, b),
+    ),
+    scope(supabase.from('production_coverage').select('first_date, last_date, cal_months').eq('method', method)).limit(1000),
+    supabase.from('farms').select('id, name').limit(1000),
   ])
-  const err = stats.error ?? monthly.error ?? yearly.error ?? seasonal.error ?? farms.error
+  const err = statsDesc.error ?? monthly.error ?? yearly.error ?? seasonal.error ?? coverage.error ?? farms.error
   if (err) return <PanelError message={err.message} />
+  const stats = { data: [...(statsDesc.data ?? [])].reverse() }
 
   const perHarvest = toRows(
     'x',
@@ -62,11 +93,7 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
   const monthRows = toRows('x', { q: sumBy(monthly.data ?? [], (r) => r.month, (r) => num(r.quantity)) }, monthLabel)
   const yearRows = toRows('x', { q: sumBy(yearly.data ?? [], (r) => String(r.year), (r) => num(r.quantity)) }, (k) => k)
 
-  const monthsList: string[] = (monthly.data ?? []).map((r: { month: string }) => r.month).sort()
-  const fullYear =
-    monthsList.length > 0 &&
-    monthSpan(monthsList[0], monthsList[monthsList.length - 1]) >= 11 &&
-    Math.max(0, ...(seasonal.data ?? []).map((r: { years: number }) => r.years)) >= 1
+  const fullYear = seasonalReady(coverage.data ?? [])
   const seasonRows = toRows(
     'x',
     { q: sumBy(seasonal.data ?? [], (r) => String(r.cal_month).padStart(2, '0'), (r) => num(r.avg_quantity)) },
@@ -91,7 +118,7 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
       <Section title="Yearly production">
         <BarSeries data={yearRows} xKey="x" series={[{ key: 'q', label: 'Yearly total', unit: u }]} />
       </Section>
-      <Section title="Seasonal pattern" note="Average monthly total across years">
+      <Section title="Seasonal pattern" note="Average of harvests falling in each calendar month.">
         {fullYear ? (
           <BarSeries data={seasonRows} xKey="x" series={[{ key: 'q', label: 'Average', unit: u }]} />
         ) : (
@@ -111,17 +138,15 @@ export async function ProductionPanel({ farm, unit }: PanelProps & { unit: 'nuts
 
 export async function WeatherPanel({ farm }: PanelProps) {
   const supabase = await createServerClient()
-  let q = supabase
-    .from('weather_monthly')
-    .select('month, avg_temp, total_rain, avg_humidity')
-    .order('month', { ascending: false })
-    .limit(farm ? 24 : 480)
-  if (farm) q = q.eq('farm_id', farm)
-  const { data, error } = await q
+  const since = monthsAgoFirst(todayIST(), 23)
+  const { data, error } = await fetchAll((a, b) =>
+    farmScope(farm)(supabase.from('weather_monthly').select('farm_id, month, avg_temp, total_rain, avg_humidity').gte('month', since))
+      .order('month')
+      .order('farm_id')
+      .range(a, b),
+  )
   if (error) return <PanelError message={error.message} />
-  const rows = data ?? []
-  const cutoff = [...new Set(rows.map((r: { month: string }) => r.month))].sort().slice(-24)[0] ?? ''
-  const recent = rows.filter((r: { month: string }) => r.month >= cutoff)
+  const recent = data
   const temp = toRows('x', { v: avgBy(recent, (r) => r.month, (r) => num(r.avg_temp)) }, monthLabel)
   const rain = toRows('x', { v: avgBy(recent, (r) => r.month, (r) => num(r.total_rain)) }, monthLabel)
   const hum = toRows('x', { v: avgBy(recent, (r) => r.month, (r) => num(r.avg_humidity)) }, monthLabel)
@@ -145,10 +170,21 @@ export async function WeatherPanel({ farm }: PanelProps) {
 export async function FertilizerPanel({ farm }: PanelProps) {
   const supabase = await createServerClient()
   const scope = farmScope(farm)
+  const monthSince = monthsAgoFirst(todayIST(), 36)
   const [npk, yieldRows] = await Promise.all([
-    scope(supabase.from('npk_monthly').select('month, n_kg, p_kg, k_kg')),
+    fetchAll((a, b) =>
+      scope(supabase.from('npk_monthly').select('farm_id, month, n_kg, p_kg, k_kg').gte('month', monthSince))
+        .order('month')
+        .order('farm_id')
+        .range(a, b),
+    ),
     // Nut harvests only: tons per tree is never overlaid on the same chart as nuts per tree.
-    scope(supabase.from('harvest_stats').select('harvest_date, per_tree').eq('method', 'mudi')),
+    fetchAll((a, b) =>
+      scope(supabase.from('harvest_stats').select('id, harvest_date, per_tree').eq('method', 'mudi').gte('harvest_date', monthSince))
+        .order('harvest_date')
+        .order('id')
+        .range(a, b),
+    ),
   ])
   const err = npk.error ?? yieldRows.error
   if (err) return <PanelError message={err.message} />
@@ -188,16 +224,28 @@ export async function FertilizerPanel({ farm }: PanelProps) {
 
 export async function MarketPanel({ farm }: PanelProps) {
   const supabase = await createServerClient()
-  const since = new Date(Date.now() - 365 * 86400_000).toISOString().slice(0, 10)
-  let rev = supabase.from('harvest_stats').select('harvest_date, revenue, estimated_revenue')
-  if (farm) rev = rev.eq('farm_id', farm)
+  const today = todayIST()
+  const since = yearsAgo(today, 1)
+  const monthSince = monthsAgoFirst(today, 36)
   const [weekly, revenue] = await Promise.all([
-    supabase
-      .from('market_weekly')
-      .select('market_name, rate_type, week, avg_rate')
-      .gte('week', since)
-      .order('week'),
-    rev,
+    fetchAll((a, b) =>
+      supabase
+        .from('market_weekly')
+        .select('market_name, rate_type, week, avg_rate')
+        .gte('week', since)
+        .order('week')
+        .order('market_name')
+        .order('rate_type')
+        .range(a, b),
+    ),
+    fetchAll((a, b) =>
+      farmScope(farm)(
+        supabase.from('harvest_stats').select('id, harvest_date, revenue, estimated_revenue').gte('harvest_date', monthSince),
+      )
+        .order('harvest_date')
+        .order('id')
+        .range(a, b),
+    ),
   ])
   const err = weekly.error ?? revenue.error
   if (err) return <PanelError message={err.message} />
@@ -259,9 +307,12 @@ export async function MarketPanel({ farm }: PanelProps) {
 
 export async function PestsPanel({ farm }: PanelProps) {
   const supabase = await createServerClient()
-  let q = supabase.from('pest_monthly').select('month, incidents, high, medium, low')
-  if (farm) q = q.eq('farm_id', farm)
-  const { data, error } = await q
+  const { data, error } = await fetchAll((a, b) =>
+    farmScope(farm)(supabase.from('pest_monthly').select('farm_id, month, incidents, high, medium, low'))
+      .order('month')
+      .order('farm_id')
+      .range(a, b),
+  )
   if (error) return <PanelError message={error.message} />
   const by = (k: 'incidents' | 'high' | 'medium' | 'low') =>
     sumBy(data ?? [], (r) => r.month, (r) => num(r[k]))

@@ -161,3 +161,17 @@ test('market_monthly averages 10 and 12 to 11', async () => {
   expect(r.rows).toHaveLength(1)
   expect(Number(r.rows[0].avg_rate)).toBe(11)
 })
+
+test('production_coverage reports span and distinct calendar months per method', async () => {
+  const u = await t.createUser()
+  const farm = await farmFor(u)
+  await t.asUser(u, async (tx) => {
+    for (const d of ['2024-01-10', '2024-12-20', '2025-01-15']) {
+      await tx.query(`insert into harvests(farm_id, harvest_date, method, mudi_count) values ($1, $2, 'mudi', 1)`, [farm, d])
+    }
+  })
+  const r = await t.asUser(u, (tx) =>
+    tx.query<any>(`select method, first_date::text as f, last_date::text as l, cal_months from production_coverage`),
+  )
+  expect(r.rows).toEqual([{ method: 'mudi', f: '2024-01-10', l: '2025-01-15', cal_months: 2 }])
+})
