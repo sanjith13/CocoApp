@@ -92,3 +92,50 @@ test('farms_with_trees shows latest count', async () => {
   )
   expect(r.rows[0].current_tree_count).toBe(380)
 })
+
+test("user B cannot see A's varieties or tree counts", async () => {
+  const a = await t.createUser()
+  const b = await t.createUser()
+  const farm = await insertFarm(a)
+  await seedCounts(farm)
+  await t.asService((tx) =>
+    tx.query(`insert into farm_varieties(farm_id, variety_name, tree_count) values ($1, 'Tall', 100)`, [farm]),
+  )
+  const v = await t.asUser(b, (tx) => tx.query('select * from farm_varieties'))
+  const c = await t.asUser(b, (tx) => tx.query('select * from farm_tree_counts'))
+  expect(v.rows).toHaveLength(0)
+  expect(c.rows).toHaveLength(0)
+  const own = await t.asUser(a, (tx) => tx.query('select * from farm_varieties'))
+  expect(own.rows).toHaveLength(1)
+})
+
+test('user B cannot insert a farm owned by A', async () => {
+  const a = await t.createUser()
+  const b = await t.createUser()
+  await expect(
+    t.asUser(b, (tx) =>
+      tx.query(
+        `insert into farms(user_id, name, latitude, longitude, acreage) values ($1, 'x', 1, 1, 1)`,
+        [a],
+      ),
+    ),
+  ).rejects.toThrow()
+})
+
+test("user A cannot move a variety to B's farm", async () => {
+  const a = await t.createUser()
+  const b = await t.createUser()
+  const farmA = await insertFarm(a)
+  const farmB = await insertFarm(b)
+  const v = await t.asService((tx) =>
+    tx.query<{ id: string }>(
+      `insert into farm_varieties(farm_id, variety_name, tree_count) values ($1, 'Tall', 100) returning id`,
+      [farmA],
+    ),
+  )
+  await expect(
+    t.asUser(a, (tx) =>
+      tx.query(`update farm_varieties set farm_id = $1 where id = $2`, [farmB, v.rows[0].id]),
+    ),
+  ).rejects.toThrow()
+})
