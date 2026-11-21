@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { mergeMarketNames } from '@/lib/validation/market'
 import { harvestSchema, buildHarvestWrites } from '@/lib/validation/harvest'
 
 const base = { farm_id: 'f1', harvest_date: '2026-11-20' }
@@ -69,5 +70,12 @@ describe('buildHarvestWrites', () => {
     })
     expect(marketRate?.rate_type).toBe('dehusked_per_ton')
     expect(harvest).toMatchObject({ mudi_count: null, extra_nuts: 0, weight_ton: 2.5 })
+  })
+})
+
+describe('mergeMarketNames', () => {
+  it('lists default markets first and dedupes recent names case-insensitively', () => {
+    expect(mergeMarketNames([])).toEqual(['Kangayam', 'Pollachi', 'Udumalpet'])
+    expect(mergeMarketNames(['pollachi', 'Erode', 'Erode', ' '])).toEqual(['Kangayam', 'Pollachi', 'Udumalpet', 'Erode'])
   })
 })

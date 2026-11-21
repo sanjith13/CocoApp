@@ -10,6 +10,22 @@ export const RATE_LABELS: Record<RateType, string> = {
   copra_per_kg: 'Copra (₹/kg)',
 }
 
+export const DEFAULT_MARKETS = ['Kangayam', 'Pollachi', 'Udumalpet'] as const
+
+/** Default markets first, then any other names from recent entries; case-insensitive dedupe. */
+export function mergeMarketNames(recent: readonly string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const n of [...DEFAULT_MARKETS, ...recent]) {
+    const k = n.trim().toLowerCase()
+    if (k && !seen.has(k)) {
+      seen.add(k)
+      out.push(n.trim())
+    }
+  }
+  return out
+}
+
 export const marketRateSchema = z.object({
   market_name: z.string().trim().min(1, 'Market name is required').max(80, 'Max 80 characters'),
   date: isoDate,

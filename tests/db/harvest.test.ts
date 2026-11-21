@@ -213,3 +213,22 @@ test('rejects harvest missing its quantity', async () => {
     ).rejects.toThrow()
   }
 })
+
+test('harvest_stats.estimated_revenue matches the function for sold and unsold harvests', async () => {
+  const { u, farm } = await setup()
+  const unsold = await addHarvest(u, farm, '2026-03-01', 'mudi', 10)
+  const sold = await addHarvest(u, farm, '2026-03-20', 'mudi', 10, { rate: 12 })
+  await t.asUser(u, (tx) =>
+    tx.query(
+      `insert into market_rates(market_name, date, rate_type, rate) values ('K','2026-03-05','whole_nut_per_nut',15)`,
+    ),
+  )
+  const rows = await stats(u, farm)
+  const byId = new Map(rows.map((r: any) => [r.id, r]))
+  const fn = async (id: string) =>
+    (await t.asUser(u, (tx) => tx.query<any>('select estimated_revenue($1) as v', [id]))).rows[0].v
+  expect(Number(byId.get(unsold).estimated_revenue)).toBe(2000 * 15)
+  expect(byId.get(unsold).estimated_revenue).toBe(await fn(unsold))
+  expect(byId.get(sold).estimated_revenue).toBeNull()
+  expect(await fn(sold)).toBeNull()
+})

@@ -63,6 +63,28 @@ create policy market_rates_owner on market_rates for all
       where h.id = harvest_id and f.user_id = auth.uid()))
   );
 
+-- Estimated revenue for an unsold harvest, using the owner's latest matching rate (any market)
+create function estimated_revenue(p_harvest uuid) returns numeric
+language sql stable
+set search_path = public
+as $$
+  select h.quantity * r.rate
+  from (
+    select hv.id, f.user_id, hv.sale_rate,
+      case when hv.method = 'mudi' then hv.coconut_count::numeric else hv.weight_ton end as quantity,
+      case when hv.method = 'mudi' then 'whole_nut_per_nut' else 'dehusked_per_ton' end as rate_type
+    from harvests hv join farms f on f.id = hv.farm_id
+    where hv.id = p_harvest
+  ) h
+  join lateral (
+    select m.rate from market_rates m
+    where m.user_id = h.user_id and m.rate_type = h.rate_type
+    order by m.date desc, m.created_at desc
+    limit 1
+  ) r on true
+  where h.sale_rate is null
+$$;
+
 -- Harvest stats
 create view harvest_stats with (security_invoker = true) as
 with base as (
@@ -85,7 +107,8 @@ select l.*,
   case when l.prev_same_method_quantity is null or l.prev_same_method_quantity = 0 then null
        else round((l.quantity - l.prev_same_method_quantity) / l.prev_same_method_quantity * 100, 2)
   end as change_pct,
-  coalesce(l.prev_any_date, l.harvest_date - 45) as period_start
+  coalesce(l.prev_any_date, l.harvest_date - 45) as period_start,
+  estimated_revenue(l.id) as estimated_revenue
 from lagged l;
 
 -- Latest rate per user, market and rate type
@@ -94,24 +117,3 @@ select distinct on (user_id, market_name, rate_type) *
 from market_rates
 order by user_id, market_name, rate_type, date desc, created_at desc;
 
--- Estimated revenue for an unsold harvest, using the owner's latest matching rate (any market)
-create function estimated_revenue(p_harvest uuid) returns numeric
-language sql stable
-set search_path = public
-as $$
-  select h.quantity * r.rate
-  from (
-    select hv.id, f.user_id, hv.sale_rate,
-      case when hv.method = 'mudi' then hv.coconut_count::numeric else hv.weight_ton end as quantity,
-      case when hv.method = 'mudi' then 'whole_nut_per_nut' else 'dehusked_per_ton' end as rate_type
-    from harvests hv join farms f on f.id = hv.farm_id
-    where hv.id = p_harvest
-  ) h
-  join lateral (
-    select m.rate from market_rates m
-    where m.user_id = h.user_id and m.rate_type = h.rate_type
-    order by m.date desc, m.created_at desc
-    limit 1
-  ) r on true
-  where h.sale_rate is null
-$$;

@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
 import { HarvestForm, type HarvestInitial } from './HarvestForm'
+import { mergeMarketNames } from '@/lib/validation/market'
 import { saveHarvest } from '@/app/(app)/harvests/actions'
 
 /** Loads farms, last-used methods and market names, then renders the form. Must sit inside Suspense. */
@@ -22,7 +23,8 @@ export async function HarvestFormLoader({ harvestId }: { harvestId?: string }) {
   for (const h of lastRes.data ?? []) if (!lastMethod.has(h.farm_id)) lastMethod.set(h.farm_id, h.method)
   const farms = (farmsRes.data ?? []).map((f) => ({ id: f.id, name: f.name, lastMethod: lastMethod.get(f.id) ?? null }))
 
-  const marketNames = [...new Set((ratesRes.data ?? []).map((r) => r.market_name))]
+  const recentNames = [...new Set((ratesRes.data ?? []).map((r) => r.market_name))]
+  const marketNames = mergeMarketNames(recentNames)
 
   let initial: HarvestInitial | undefined
   if (harvestId) {
@@ -50,7 +52,7 @@ export async function HarvestFormLoader({ harvestId }: { harvestId?: string }) {
       farms={farms}
       today={todayIST()}
       marketNames={marketNames}
-      lastMarket={marketNames[0] ?? ''}
+      lastMarket={recentNames[0] ?? ''}
       initial={initial}
       submitLabel={initial ? 'Save changes' : 'Save harvest'}
     />

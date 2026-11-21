@@ -62,7 +62,7 @@ export async function saveHarvest(_prev: HarvestActionResult | null, form: FormD
   revalidatePath('/harvests')
   revalidatePath('/market')
   revalidatePath(`/harvests/${harvestId}`)
-  if (warning) return { ok: true, id: harvestId, warning }
+  if (warning) redirect(`/harvests/${harvestId}?notice=${encodeURIComponent(warning)}`)
   redirect('/harvests')
 }
 

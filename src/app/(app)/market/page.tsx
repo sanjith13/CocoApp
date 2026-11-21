@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
 import { MarketRateForm } from '@/components/market/MarketRateForm'
-import { RATE_LABELS, type RateType } from '@/lib/validation/market'
+import { RATE_LABELS, mergeMarketNames, type RateType } from '@/lib/validation/market'
 
 function RateTable({
   title,
@@ -57,7 +57,7 @@ async function MarketContent() {
   ])
   const err = latest.error ?? recent.error
   if (err) return <p className="text-destructive">{err.message}</p>
-  const names = [...new Set((recent.data ?? []).map((r) => r.market_name))]
+  const names = mergeMarketNames((recent.data ?? []).map((r) => r.market_name))
   return (
     <>
       <MarketRateForm marketNames={names} today={todayIST()} />

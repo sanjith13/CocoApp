@@ -9,7 +9,7 @@ async function HarvestList() {
   const [{ data: rows, error }, { data: farms }] = await Promise.all([
     supabase
       .from('harvest_stats')
-      .select('id, farm_id, harvest_date, method, quantity, unit, revenue, change_pct')
+      .select('id, farm_id, harvest_date, method, quantity, unit, revenue, estimated_revenue, change_pct')
       .order('harvest_date', { ascending: false })
       .limit(100),
     supabase.from('farms').select('id, name'),
@@ -18,20 +18,11 @@ async function HarvestList() {
   if (!rows?.length) return <p className="text-muted-foreground">No harvests yet. Log your first one.</p>
 
   const farmName = new Map((farms ?? []).map((f) => [f.id, f.name]))
-  // Unsold harvests show an estimate from the latest matching market rate.
-  const estimates = await Promise.all(
-    rows.map(async (r) => {
-      if (r.revenue !== null) return null
-      const { data } = await supabase.rpc('estimated_revenue', { p_harvest: r.id })
-      return typeof data === 'number' ? data : null
-    }),
-  )
-
   return (
     <ul className="space-y-3">
-      {rows.map((r, i) => {
+      {rows.map((r) => {
         const qty = r.unit === 'nuts' ? `${Number(r.quantity).toLocaleString('en-IN')} nuts` : `${Number(r.quantity)} ton`
-        const est = estimates[i]
+        const est = r.estimated_revenue
         return (
           <li key={r.id}>
             <Link href={`/harvests/${r.id}`}>
