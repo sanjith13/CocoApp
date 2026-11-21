@@ -161,3 +161,20 @@ test('fertilizer_effect: no change_pct when baseline missing; methods kept apart
   expect(mudi.find((r: any) => r.window_label === '1-2').change_pct).toBeNull()
   expect(ton.find((r: any) => r.window_label === 'baseline').harvests).toBe(1)
 })
+
+test('RLS: cannot apply another users custom fertilizer; seeds still work', async () => {
+  const a = await t.createUser()
+  const { u: b, farm } = await setup()
+  const mine = await t.asUser(a, (tx) =>
+    tx.query<{ id: string }>(`insert into fertilizer_master(name, n_pct) values ('Priv', 10) returning id`),
+  )
+  await expect(
+    t.asUser(b, (tx) =>
+      tx.query(`insert into fertilizer_applications(farm_id, date, fertilizer_id, quantity_kg) values ($1, '2026-03-01', $2, 5)`, [
+        farm,
+        mine.rows[0].id,
+      ]),
+    ),
+  ).rejects.toThrow()
+  await expect(applyUrea(b, farm, '2026-03-01')).resolves.toBeTruthy()
+})

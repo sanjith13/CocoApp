@@ -4,61 +4,10 @@ import { createServerClient } from '@/lib/supabase/server'
 import { todayIST } from '@/lib/domain/dates'
 import { Card } from '@/components/ui/card'
 import { ApplicationForm } from '@/components/fertilizer/ApplicationForm'
-import { formatPct } from '@/lib/domain/format'
+import { EffectTable } from '@/components/fertilizer/EffectTable'
 
 const CAPTION = 'Before/after comparison — weather and season also affect yield.'
 const dash = (n: number | null, digits: number) => (n === null ? '—' : Number(n).toFixed(digits))
-
-type EffectRow = {
-  method: string
-  window_label: string
-  harvests: number
-  avg_per_tree: number | null
-  change_pct: number | null
-}
-
-async function Effect({ id }: { id: string }) {
-  const supabase = await createServerClient()
-  const { data, error } = await supabase.rpc('fertilizer_effect', { p_application: id })
-  if (error) return <p className="text-destructive">{error.message}</p>
-  const rows = (data ?? []) as EffectRow[]
-  if (!rows.length) return <p className="text-sm text-muted-foreground">not enough harvests yet</p>
-  return (
-    <div className="space-y-1">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-muted-foreground">
-            <th className="py-1">Unit</th>
-            <th>Window (months)</th>
-            <th>Harvests</th>
-            <th>Avg / tree</th>
-            <th>Change</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={`${r.method}-${r.window_label}`}>
-              <td className="py-1">{r.method === 'mudi' ? 'Nuts' : 'Tons'}</td>
-              <td>{r.window_label === 'baseline' ? 'Before (90 days)' : r.window_label}</td>
-              {r.harvests === 0 ? (
-                <td colSpan={3} className="text-muted-foreground">
-                  not enough harvests yet
-                </td>
-              ) : (
-                <>
-                  <td>{r.harvests}</td>
-                  <td>{dash(r.avg_per_tree, r.method === 'mudi' ? 1 : 4)}</td>
-                  <td>{r.window_label === 'baseline' ? '—' : formatPct(r.change_pct)}</td>
-                </>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="text-xs text-muted-foreground">{CAPTION}</p>
-    </div>
-  )
-}
 
 async function Applications() {
   const supabase = await createServerClient()
@@ -91,14 +40,7 @@ async function Applications() {
             <div className="text-sm text-muted-foreground">
               Per tree: N {dash(r.n_per_tree_kg, 4)} / P {dash(r.p_per_tree_kg, 4)} / K {dash(r.k_per_tree_kg, 4)} kg
             </div>
-            <details className="mt-2">
-              <summary className="cursor-pointer text-sm underline">Before/after</summary>
-              <div className="mt-2">
-                <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
-                  <Effect id={r.id} />
-                </Suspense>
-              </div>
-            </details>
+            <EffectTable applicationId={r.id} />
           </Card>
         </li>
       ))}

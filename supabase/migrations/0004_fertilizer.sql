@@ -43,7 +43,11 @@ create policy fertilizer_master_delete on fertilizer_master for delete
 
 create policy fertilizer_applications_owner on fertilizer_applications for all
   using (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()))
-  with check (exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid()));
+  with check (
+    exists (select 1 from farms f where f.id = farm_id and f.user_id = auth.uid())
+    -- the FK check bypasses RLS, so require the fertilizer to be visible to the caller
+    and exists (select 1 from fertilizer_master m where m.id = fertilizer_id)
+  );
 
 -- Application with nutrient totals; per-tree uses the tree count on the application date.
 create view fertilizer_npk with (security_invoker = true) as
@@ -102,7 +106,7 @@ as $$
   ),
   agg as (
     select sl.method, sl.label, sl.from_m, sl.to_m, sl.ord,
-      count(hs.harvest_date)::int as harvests,
+      count(hs.per_tree)::int as harvests,
       avg(hs.per_tree) as avg_pt
     from slots sl
     left join hs on hs.method = sl.method and hs.harvest_date >= sl.lo and hs.harvest_date < sl.hi

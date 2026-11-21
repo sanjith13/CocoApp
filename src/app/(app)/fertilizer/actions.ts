@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
 import { applicationSchema, fertilizerSchema } from '@/lib/validation/fertilizer'
+import { applicationIdSchema } from '@/lib/validation/fertilizer-effect'
 
 export type FertilizerActionResult =
   | { ok: true }
@@ -42,4 +43,24 @@ export async function saveFertilizer(
   revalidatePath('/fertilizer/master')
   revalidatePath('/fertilizer')
   return { ok: true }
+}
+
+export type EffectRow = {
+  method: string
+  window_label: string
+  harvests: number
+  avg_per_tree: number | null
+  change_pct: number | null
+}
+
+/** Loads the before/after rows for one application (RLS client), on demand. */
+export async function getFertilizerEffect(
+  applicationId: string,
+): Promise<{ ok: true; rows: EffectRow[] } | { ok: false; error: string }> {
+  const id = applicationIdSchema.safeParse(applicationId)
+  if (!id.success) return { ok: false, error: 'Invalid application' }
+  const supabase = await createServerClient()
+  const { data, error } = await supabase.rpc('fertilizer_effect', { p_application: id.data })
+  if (error) return { ok: false, error: error.message }
+  return { ok: true, rows: (data ?? []) as EffectRow[] }
 }
