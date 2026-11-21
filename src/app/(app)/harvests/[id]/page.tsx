@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { HarvestFormLoader } from '@/components/harvests/HarvestFormLoader'
 import { DeleteHarvestButton } from '@/components/harvests/DeleteHarvestButton'
 
@@ -14,6 +15,9 @@ async function Content({ params, searchParams }: Props) {
   return (
     <>
       {text && <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">{text}</p>}
+      <Link href={`/reports/${id}`} className="block text-sm underline">
+        View harvest report
+      </Link>
       <HarvestFormLoader harvestId={id} />
       <DeleteHarvestButton id={id} />
     </>

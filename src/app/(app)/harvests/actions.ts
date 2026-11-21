@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
+import { generateReportsAround } from '@/lib/reports/generate'
 import { buildHarvestWrites, harvestSchema } from '@/lib/validation/harvest'
 
 export type HarvestActionResult =
@@ -28,7 +29,10 @@ export async function saveHarvest(_prev: HarvestActionResult | null, form: FormD
   const supabase = await createServerClient()
 
   let harvestId: string
+  let oldDate: string | null = null
   if (editId) {
+    const { data: before } = await supabase.from('harvests').select('harvest_date').eq('id', editId).maybeSingle()
+    oldDate = before?.harvest_date ?? null
     const { error } = await supabase
       .from('harvests')
       .update({ ...harvest, updated_at: new Date().toISOString() })
@@ -59,11 +63,22 @@ export async function saveHarvest(_prev: HarvestActionResult | null, form: FormD
     if (error) warning = `Harvest saved, but the old market rate was not removed: ${error.message}`
   }
 
+  // A report failure must never fail or block the harvest save.
+  try {
+    await generateReportsAround(supabase, {
+      harvestId,
+      extraAfterDates: oldDate && oldDate !== harvest.harvest_date ? [oldDate] : [],
+    })
+  } catch (e) {
+    console.error('Report generation failed', e)
+  }
+
   revalidatePath('/harvests')
   revalidatePath('/market')
+  revalidatePath('/reports')
   revalidatePath(`/harvests/${harvestId}`)
   if (warning) redirect(`/harvests/${harvestId}?notice=${encodeURIComponent(warning)}`)
-  redirect('/harvests')
+  redirect(editId ? '/harvests' : `/reports/${harvestId}`)
 }
 
 function harvestError(error: { code?: string; message: string } | null): HarvestActionResult {
@@ -75,9 +90,19 @@ function harvestError(error: { code?: string; message: string } | null): Harvest
 
 export async function deleteHarvest(id: string): Promise<HarvestActionResult> {
   const supabase = await createServerClient()
+  const { data: before } = await supabase.from('harvests').select('farm_id, harvest_date').eq('id', id).maybeSingle()
   const { error } = await supabase.from('harvests').delete().eq('id', id)
   if (error) return { ok: false, error: error.message }
+  // The deleted harvest's report cascades; the next harvest's period start has moved.
+  if (before) {
+    try {
+      await generateReportsAround(supabase, { farmId: before.farm_id, extraAfterDates: [before.harvest_date] })
+    } catch (e) {
+      console.error('Report generation failed', e)
+    }
+  }
   revalidatePath('/harvests')
   revalidatePath('/market')
+  revalidatePath('/reports')
   redirect('/harvests')
 }
